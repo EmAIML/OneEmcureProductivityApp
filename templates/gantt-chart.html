@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Excel to Gantt Chart Generator</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background:  #fff8dc; /* light yellow */
+      color: #4B2E2E; /* dark red-brown */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      padding: 20px;
+    }
+
+    .upload-box {
+      background: #FFFFFF; /* white */
+      border-radius: 12px;
+      box-shadow: 0 6px 20px rgba(75, 46, 46, 0.15);
+      width: 100%;
+      max-width: 800px; /* increased width */
+      transition: box-shadow 0.3s ease;
+    }
+
+    .upload-box:hover {
+      box-shadow: 0 10px 30px rgba(75, 46, 46, 0.3);
+    }
+
+    .header {
+      background: linear-gradient(135deg, #b22222, #5c1a00);
+      padding: 25px 30px;
+      border-top-left-radius: 12px;
+      border-top-right-radius: 12px;
+      color: #FFF5F0;
+      text-align: center;
+      box-shadow: inset 0 -3px 5px rgba(0,0,0,0.1);
+    }
+
+    .header h1 {
+      margin: 0;
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      line-height: 1.1;
+    }
+
+    .header p {
+      margin: 6px 0 0 0;
+      font-size: 14px;
+      font-weight: 400;
+      opacity: 0.85;
+      font-style: italic;
+      letter-spacing: 0.5px;
+    }
+
+    .form-content {
+      padding: 15px 50px; /* slightly reduced padding */
+      text-align: center;
+    }
+
+    input[type="file"] {
+      margin: 15px 0 20px;
+      padding: 14px;
+      border: 2px dashed #b22222;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 15px;
+      color: #0c0b0b;
+      transition: border-color 0.3s ease;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    input[type="file"]:focus {
+      border-color: #5c1a00;
+      outline: none;
+      box-shadow: 0 0 5px #5c1a00;
+    }
+
+    input[type="submit"] {
+      background-color: #5c1a00;
+      color: white;
+      border: none;
+      padding: 14px 0;
+      font-size: 18px;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      width: 100%;
+      letter-spacing: 0.8px;
+      transition: background-color 0.3s ease, box-shadow 0.3s ease;
+    }
+    input[type="submit"]:hover {
+      background-color: #5c1a00;
+      box-shadow: 0 4px 15px rgba(122, 67, 62, 0.5);
+    }
+
+    .footer {
+      margin-top: 10px; /* reduced from 20px */
+      font-size: 13px;
+      color: #b22222;
+      font-style: italic;
+      user-select: none;
+    }
+
+    .radio-group {
+      text-align: left;
+      margin-top: 10px;
+      font-size: 15px;
+      color: #b22222;
+    }
+
+    .radio-group p {
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: #b22222;
+    }
+
+    .radio-group label {
+      display: block;
+      margin-bottom: 6px;
+      cursor: pointer;
+    }
+
+    .radio-group input[type="radio"] {
+      margin-right: 10px;
+      accent-color: #5c1a00;
+      cursor: pointer;
+      transform: scale(1.1);
+    }
+
+    .back-dashboard {
+      margin-top: 8px; /* small margin to reduce gap */
+      font-size: 14px;
+      color: #5c1a00;
+      font-weight: 600;
+    }
+
+    .back-dashboard a {
+      text-decoration: none;
+      color: #7a2e2e;
+      transition: color 0.3s ease;
+    }
+
+    .back-dashboard a:hover {
+      color: #b22222;
+    }
+  </style>
+</head>
+<body>
+  <div class="upload-box" role="main" aria-label="Excel file upload for Gantt chart generator">
+
+    <div class="header">
+      <h1>Upload Excel File</h1>
+      <p>Generate your project’s Gantt chart quickly and easily</p>
+    </div>
+
+    <div class="form-content">
+      <form method="POST" enctype="multipart/form-data">
+        <input type="file" name="file" accept=".xlsx,.xls" required aria-required="true" aria-label="Excel file input">
+
+        <div class="radio-group" role="group" aria-labelledby="saturday-label">
+          <p id="saturday-label"><strong>Include Saturdays in project plan?</strong></p>
+          <label><input type="radio" name="include_saturday" value="yes" checked> Yes</label>
+          <label><input type="radio" name="include_saturday" value="no"> No</label>
+        </div>
+
+        <div class="radio-group" role="group" aria-labelledby="sunday-label">
+          <p id="sunday-label"><strong>Include Sundays in project plan?</strong></p>
+          <label><input type="radio" name="include_sunday" value="yes" checked> Yes</label>
+          <label><input type="radio" name="include_sunday" value="no"> No</label>
+        </div>
+
+        <input type="submit" value="Generate Gantt Chart" aria-label="Generate Gantt Chart button">
+      </form>
+
+      <div class="footer" aria-live="polite">
+        <p>Supported format: .xlsx or .xls</p>
+      </div>
+
+      <p class="back-dashboard"><a href="{{ url_for('home') }}">← Back to Dashboard</a></p>
+    </div>
+  </div>
+</body>
+</html>

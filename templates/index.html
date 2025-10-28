@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Productivity - Boost Your Workflow</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-red: #8B0000;
+            --primary-brown: #654321;
+            --accent-orange: #FF7F50;
+            --accent-coral: #FF6B6B;
+            --accent-neon: #FF3131;
+            --light-bg: #FFF5F5;
+        }
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--light-bg);
+            color: var(--primary-brown);
+            overflow-x: hidden;
+        }
+        
+        .logo-text {
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 700;
+        }
+        
+        .hero-gradient {
+            background: linear-gradient(135deg, rgba(255,245,245,1) 0%, rgba(255,215,215,0.8) 100%);
+        }
+        
+        .module-card {
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .module-card:hover {
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .nav-blur {
+            backdrop-filter: blur(10px);
+            background-color: rgba(255, 255, 255, 0.85);
+        }
+        
+        .upload-area {
+            border: 2px dashed var(--primary-brown);
+            transition: all 0.3s ease;
+        }
+        
+        .upload-area:hover, .upload-area.dragover {
+            border-color: var(--accent-orange);
+            background-color: rgba(255, 127, 80, 0.05);
+        }
+        
+        .progress-bar {
+            height: 8px;
+            background-color: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-orange), var(--accent-neon));
+            width: 0%;
+            transition: width 0.4s ease;
+            border-radius: 4px;
+        }
+        
+        .btn-primary {
+            background-color: var(--primary-red);
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover {
+            background-color: var(--accent-neon);
+            transform: translateY(-2px);
+        }
+        
+        .btn-secondary {
+            background-color: var(--primary-brown);
+            transition: all 0.3s ease;
+        }
+        
+        .btn-secondary:hover {
+            background-color: #7a3d1c;
+            transform: translateY(-2px);
+        }
+        
+        .footer-wave {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 320'%3E%3Cpath fill='%238B0000' fill-opacity='1' d='M0,192L48,197.3C96,203,192,213,288,229.3C384,245,480,267,576,250.7C672,235,768,181,864,181.3C960,181,1056,235,1152,234.7C1248,235,1344,181,1392,154.7L1440,128L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z'%3E%3C/path%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-size: cover;
+            height: 150px;
+        }
+        
+        /* Animations */
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        @keyframes glow {
+            0% { box-shadow: 0 0 0 0 rgba(255, 49, 49, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(255, 49, 49, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 49, 49, 0); }
+        }
+        
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        .bounce:hover {
+            animation: bounce 0.5s ease;
+        }
+        
+        .glow:hover {
+            animation: glow 1.5s infinite;
+        }
+        
+        .tilt:hover {
+            transform: rotate(-2deg);
+        }
+        
+        /* Page transition */
+        .page-transition {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+        }
+        
+        .page-transition.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        /* Floating shapes */
+        .floating-shape {
+            position: absolute;
+            opacity: 0.1;
+            z-index: -1;
+            animation: float 15s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0% { transform: translate(0, 0) rotate(0deg); }
+            50% { transform: translate(50px, 50px) rotate(180deg); }
+            100% { transform: translate(0, 0) rotate(360deg); }
+        }
+        
+        /* Scroll animations */
+        [data-animate] {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.6s ease;
+        }
+        
+        [data-animate].animate {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        /* Confetti */
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: var(--accent-orange);
+            opacity: 0;
+        }
+        
+        @keyframes confetti-fall {
+            0% { transform: translateY(-100px) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
+        }
+
+        html {
+    scroll-behavior: smooth;
+             }
+    </style>
+</head>
+<body class="min-h-screen">
+    <!-- Floating background shapes -->
+    <div class="floating-shape top-20 left-10 w-32 h-32 rounded-full bg-[#FF7F50]"></div>
+    <div class="floating-shape top-1/3 right-20 w-24 h-24 rounded-full bg-[#8B0000]" style="animation-delay: 2s;"></div>
+    <div class="floating-shape bottom-1/4 left-1/4 w-20 h-20 rounded-full bg-[#654321]" style="animation-delay: 4s;"></div>
+    <div class="floating-shape bottom-20 right-1/3 w-16 h-16 rounded-full bg-[#FF6B6B]" style="animation-delay: 6s;"></div>
+    
+    <!-- Navigation -->
+    <!-- Alpine.js is required for this dropdown to work -->
+<script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+
+<nav id="mainNav" class="fixed w-full z-50 transition-all duration-300 py-3">
+    <div class="container mx-auto px-4">
+        <div class="flex justify-between items-center nav-blur rounded-full px-6 py-2 shadow-md">
+            <!-- Logo -->
+            <a href="#" class="flex items-center space-x-2">
+                <div class="w-10 h-10 rounded-full bg-[#8B0000] flex items-center justify-center text-white pulse">
+                    <i class="fas fa-brain text-xl"></i>
+                </div>
+                <span class="logo-text text-2xl font-bold text-[#8B0000]">Friday AI Productivity</span>
+            </a>
+
+            <!-- Navigation Links -->
+            <div class="hidden md:flex items-center space-x-6">
+                <a href="#home" class="text-[#654321] hover:text-[#8B0000] font-medium transition">🏠 Home</a>
+                <!-- <a href="#modules" class="text-[#654321] hover:text-[#8B0000] font-medium transition">🧠 Modules</a> -->
+                <a href="#about" class="text-[#654321] hover:text-[#8B0000] font-medium transition">ℹ️ About</a>
+                <a href="#contact" class="text-[#654321] hover:text-[#8B0000] font-medium transition">📬 Contact</a>
+
+                <!-- Dropdown Button -->
+                <div x-data="{ open: false }" class="relative">
+                    <button 
+                        @click="open = !open" 
+                        class="text-[#654321] hover:text-[#8B0000] font-medium transition focus:outline-none"
+                    >
+                        🔽 Account
+                    </button>
+                    <!-- Dropdown Menu -->
+                    <div 
+                        x-show="open" 
+                        @click.away="open = false" 
+                        class="absolute right-0 mt-2 w-32 bg-white rounded-md shadow-lg py-2 z-50"
+                        x-transition
+                    >
+                        <a 
+                            href="{{ url_for('login') }}"
+                            class="block px-4 py-2 text-sm text-[#8B0000] hover:bg-gray-100"
+                        >
+                            🚪 Logout
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</nav>
+
+                <button id="mobileMenuBtn" class="md:hidden text-[#654321] text-2xl">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Mobile menu -->
+        <div id="mobileMenu" class="hidden md:hidden nav-blur mt-2 rounded-lg shadow-lg py-2 px-4">
+            <a href="#home" class="block py-2 text-[#654321] hover:text-[#8B0000]">🏠 Home</a>
+            <a href="#modules" class="block py-2 text-[#654321] hover:text-[#8B0000]">🧠 Modules</a>
+            <a href="#about" class="block py-2 text-[#654321] hover:text-[#8B0000]">ℹ️ About</a>
+            <a href="#contact" class="block py-2 text-[#654321] hover:text-[#8B0000]">📬 Contact</a>
+           <!-- <button class="btn-primary w-full mt-2 px-4 py-2 rounded-full text-white font-medium">Get Started</button>-->
+        </div>
+    </nav>
+    
+    <!-- Hero Section -->
+    <section id="home" class="hero-gradient pt-32 pb-20 relative overflow-hidden">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col md:flex-row items-center">
+                <div class="md:w-1/2 mb-10 md:mb-0" data-animate>
+                    <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 text-[#8B0000]">
+                        Supercharge Your <span class="text-[#FF7F50]">Productivity</span> with AI
+                    </h1>
+                    <p class="text-lg md:text-xl text-[#654321] mb-8">
+                        Transform your workflow with our powerful AI tools designed to save you time and boost your efficiency.
+                    </p>
+                    <div class="flex space-x-4">
+                        <button 
+                        class="btn-primary px-6 py-3 rounded-full text-white font-medium text-lg bounce"
+                        onclick="document.getElementById('modules').scrollIntoView({ behavior: 'smooth' });"
+                        >
+                        Explore Modules <i class="fas fa-arrow-right ml-2"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="md:w-1/2 relative" data-animate>
+                    <div class="relative">
+                        <div class="w-full h-full bg-[#8B0000] rounded-3xl absolute -rotate-6"></div>
+                        <div class="w-full h-full bg-[#FF7F50] rounded-3xl absolute -rotate-3"></div>
+                        <div class="w-full h-full bg-white rounded-3xl relative p-8 shadow-xl">
+                            <div class="flex justify-between items-center mb-6">
+                                <div class="flex space-x-2">
+                                    <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                                    <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                                    <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                                </div>
+                                <span class="text-sm font-medium text-gray-500">AI Productivity Dashboard</span>
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="module-card bg-[#FFF5F5] p-4 rounded-xl border border-[#FFD7D7] glow">
+                                    <div class="w-12 h-12 rounded-xl bg-[#8B0000] flex items-center justify-center text-white mb-3">
+                                        <i class="fas fa-file-powerpoint text-xl"></i>
+                                    </div>
+                                    <h3 class="font-bold text-[#654321] mb-1">PPT Generator</h3>
+                                    <p class="text-sm text-gray-600">Create stunning presentations in seconds</p>
+                                </div>
+                                <div class="module-card bg-[#FFF5F5] p-4 rounded-xl border border-[#FFD7D7] glow">
+                                    <div class="w-12 h-12 rounded-xl bg-[#FF7F50] flex items-center justify-center text-white mb-3">
+                                        <i class="fas fa-scissors text-xl"></i>
+                                    </div>
+                                    <h3 class="font-bold text-[#654321] mb-1">Document Processor</h3>
+                                    <p class="text-sm text-gray-600">Get concise summaries of long documents</p>
+                                </div>
+                                <div class="module-card bg-[#FFF5F5] p-4 rounded-xl border border-[#FFD7D7] glow">
+                                    <div class="w-12 h-12 rounded-xl bg-[#654321] flex items-center justify-center text-white mb-3">
+                                       <i class="fas fa-chart-bar text-xl"></i> <!-- Updated icon for charts -->
+                                    </div>
+                                    <h3 class="font-bold text-[#654321] mb-1">Gantt Chart Generator</h3>
+                                    <p class="text-sm text-gray-600">Create visual project timelines from your documents</p>
+                                </div>
+
+                                <div class="module-card bg-[#FFF5F5] p-4 rounded-xl border border-[#FFD7D7] glow">
+                                    <div class="w-12 h-12 rounded-xl bg-[#FF6B6B] flex items-center justify-center text-white mb-3">
+                                        <i class="fas fa-microphone text-xl"></i>
+                                    </div>
+                                    <h3 class="font-bold text-[#654321] mb-1">PPT to MP3</h3>
+                                    <p class="text-sm text-gray-600">Convert presentations to audio</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Modules Section -->
+    <section id="modules" class="py-20 bg-white">
+        <div class="container mx-auto px-4">
+            <div class="text-center mb-16" data-animate>
+                <h2 class="text-3xl md:text-4xl font-bold text-[#8B0000] mb-4">Our Powerful AI Modules</h2>
+                <p class="text-lg text-[#654321] max-w-2xl mx-auto">
+                    Choose from our selection of specialized AI tools designed to streamline your workflow
+                </p>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Module 1 -->
+                <div class="module-card bg-[#FFF5F5] rounded-2xl overflow-hidden shadow-lg tilt" data-animate>
+                    <div class="h-48 bg-gradient-to-r from-[#8B0000] to-[#FF7F50] flex items-center justify-center">
+                        <i class="fas fa-microphone text-white text-6xl"></i>
+                    </div>
+                    <div class="p-6">
+                        <h3 class="text-xl font-bold text-[#654321] mb-2">PPT to MP3</h3>
+                        <p class="text-gray-600 mb-4">
+                            Convert your PowerPoint presentations into high-quality audio files for easy listening on the go.
+                        </p>
+                        <a href="/ppt-to-mp3">
+                          <button 
+                          class="btn-primary px-4 py-2 rounded-full text-white font-medium w-full glow"
+                          style="background-color: #8B0000; border: none;">
+                              Try It Now
+                          </button>
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- Module 2 -->
+                <div class="module-card bg-[#F0FFF4] rounded-2xl overflow-hidden shadow-lg tilt" data-animate style="transition-delay: 0.1s;">
+                    <div class="h-48 bg-gradient-to-r from-[#2F855A] to-[#68D391] flex items-center justify-center">
+                        <i class="fas fa-scissors text-white text-6xl"></i>
+                    </div>
+                    <div class="p-6">
+                        <h3 class="text-xl font-bold text-[#2F855A] mb-2">Document Processor</h3>
+                        <p class="text-gray-600 mb-4">
+                        Get concise summaries of long documents, research papers, and articles in seconds or MCQs on the documents.
+                        </p>
+                        <a href="/doc-summarizer">
+                           <button 
+                           class="btn-primary px-4 py-2 rounded-full text-white font-medium w-full glow"
+                           style="background-color: #145638; border: none;">
+                             Try It Now
+                           </button>
+                        </a>
+                    </div>
+                </div>
+
+                
+                <!-- Module 3 -->
+                <div class="module-card bg-[#E6F0FF] rounded-2xl overflow-hidden shadow-lg tilt" data-animate style="transition-delay: 0.2s;">
+                    <div class="h-48 bg-gradient-to-r from-[#1E90FF] to-[#004080] flex items-center justify-center">
+                       <i class="fas fa-chart-bar text-white text-6xl"></i>
+                    </div>
+                    <div class="p-6">
+                       <h3 class="text-xl font-bold text-[#003366] mb-2">Gantt Chart Generator</h3>
+                       <p class="text-gray-600 mb-4">
+                       Easily create interactive Gantt charts to plan, visualize, and manage your projects effectively.
+                       </p>
+                       <a href="/gantt-chart">
+                          <button 
+                          class="btn-primary px-4 py-2 rounded-full text-white font-medium w-full glow"
+                          style="background-color: #301d73; border: none;">
+                              Try It Now
+                          </button>
+                        </a>
+                    </div>
+                </div>
+
+                
+                <!-- Module 4 -->
+                 <div class="module-card bg-[#FFF8E1] rounded-2xl overflow-hidden shadow-lg tilt" data-animate style="transition-delay: 0.2s;">
+                    <div class="h-48 bg-gradient-to-r from-[#FFD54F] to-[#FFA000] flex items-center justify-center">
+                      <i class="fas fa-project-diagram text-white text-6xl"></i>
+                    </div>
+                    <div class="p-6">
+                     <h3 class="text-xl font-bold text-[#5D4037] mb-2">Flowchart Generator</h3>
+                     <p class="text-gray-700 mb-4">
+                      Quickly generate professional flowcharts from plain text to visualize your processes clearly and efficiently.
+                     </p>
+                     <a href="/flow-chart">
+                       <button 
+                         class="btn-primary px-4 py-2 rounded-full text-white font-medium w-full glow"
+                         style="background-color: #FFC107; border: none;">
+                         Try It Now
+                       </button>
+                     </a>
+                    </div>
+                </div>
+
+              
+    </section>
+    
+    <!-- Module Demo Section (PPT to MP3)
+    <section id="moduleDemo" class="py-20 bg-[#FFF5F5] hidden">
+        <div class="container mx-auto px-4">
+            <div class="max-w-4xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden">
+                <div class="p-6 bg-gradient-to-r from-[#8B0000] to-[#FF7F50]">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-2xl font-bold text-white flex items-center">
+                            <i class="fas fa-microphone mr-3"></i> PPT to MP3 Converter
+                        </h2>
+                        <button id="backToDashboard" class="bg-white text-[#8B0000] px-4 py-2 rounded-full font-medium hover:bg-gray-100 transition">
+                            <i class="fas fa-arrow-left mr-2"></i> Back to Dashboard
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="p-8">
+                    <div class="mb-8">
+                        <h3 class="text-lg font-medium text-[#654321] mb-4">Convert your PowerPoint slides into an audio file for easy listening</h3>
+                        <p class="text-gray-600">
+                            Simply upload your PowerPoint file, and our AI will convert each slide into clear, natural-sounding audio.
+                            Perfect for reviewing presentations on the go or creating accessible content.
+                        </p>
+                    </div>
+                    
+                    <div class="upload-area rounded-xl p-12 text-center mb-8 cursor-pointer" id="uploadContainer">
+                        <i class="fas fa-cloud-upload-alt text-5xl text-[#8B0000] mb-4"></i>
+                        <h4 class="text-xl font-medium text-[#654321] mb-2">Drag & Drop Your PPT File Here</h4>
+                        <p class="text-gray-500 mb-4">or click to browse files</p>
+                        <p class="text-sm text-gray-400">Supported formats: .pptx, .ppt (Max 50MB)</p>
+                        <input type="file" id="fileUpload" class="hidden" accept=".pptx,.ppt">
+                    </div>
+                    
+                    <div class="mb-8 hidden" id="processingSection">
+                        <h4 class="text-lg font-medium text-[#654321] mb-4">Processing your file...</h4>
+                        <div class="progress-bar mb-2">
+                            <div class="progress-fill" id="progressFill"></div>
+                        </div>
+                        <p class="text-sm text-gray-500 text-right" id="progressText">0% complete</p>
+                    </div>
+                    
+                    <div class="hidden" id="resultSection">
+                        <h4 class="text-lg font-medium text-[#654321] mb-4">Your audio is ready!</h4>
+                        <div class="bg-[#FFF5F5] rounded-xl p-6 mb-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <div>
+                                    <h5 class="font-medium text-[#654321]">Presentation Audio</h5>
+                                    <p class="text-sm text-gray-500">Generated just now</p>
+                                </div>
+                                <button class="btn-secondary px-4 py-2 rounded-full text-white font-medium">
+                                    <i class="fas fa-download mr-2"></i> Download
+                                </button>
+                            </div>
+                            
+                            <audio controls class="w-full">
+                                <source src="#" type="audio/mpeg">
+                                Your browser does not support the audio element.
+                            </audio>
+                        </div>
+                        
+                        <div class="flex justify-center">
+                            <button class="btn-primary px-6 py-3 rounded-full text-white font-medium bounce">
+                                <i class="fas fa-redo mr-2"></i> Convert Another File
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center justify-between mt-8 pt-6 border-t border-gray-200">
+                        <div class="flex items-center space-x-2 text-gray-500">
+                            <i class="fas fa-lock"></i>
+                            <span class="text-sm">Secure file processing</span>
+                        </div>
+                        <div class="flex items-center space-x-2 text-gray-500">
+                            <i class="fas fa-clock"></i>
+                            <span class="text-sm">Typically processes in 1-2 minutes</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section> -->
+    
+    <!-- About Section -->
+    <section id="about" class="py-20 bg-white">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col md:flex-row items-center">
+                <div class="md:w-1/2 mb-10 md:mb-0" data-animate>
+                    <div class="relative">
+                        <div class="w-4/5 h-full bg-[#FF7F50] rounded-3xl absolute -rotate-6 opacity-20"></div>
+                        <div class="w-4/5 h-full bg-[#8B0000] rounded-3xl absolute -rotate-3 opacity-20"></div>
+                        <div class="relative bg-[#FFF5F5] rounded-3xl p-8 shadow-lg">
+                            <h2 class="text-3xl font-bold text-[#8B0000] mb-6">About Friday AI Productivity</h2>
+                            <p class="text-gray-600 mb-4">
+                                AI Productivity was born from the idea that artificial intelligence should be accessible and useful for everyday work tasks.
+                                Our mission is to create tools that genuinely save you time and reduce repetitive work.
+                            </p>
+                            <p class="text-gray-600 mb-6">
+                                Founded in 2023 by a team of AI researchers and productivity enthusiasts, we combine cutting-edge machine learning with
+                                intuitive design to create solutions that work the way you do.
+                            </p>
+                            <div class="flex flex-wrap gap-4">
+                                <div class="flex items-center">
+                                    <div class="w-12 h-12 rounded-full bg-[#8B0000] flex items-center justify-center text-white mr-4">
+                                        <i class="fas fa-bolt"></i>
+                                    </div>
+                                    <span class="font-medium text-[#654321]">Fast Processing</span>
+                                </div>
+                                <div class="flex items-center">
+                                    <div class="w-12 h-12 rounded-full bg-[#FF7F50] flex items-center justify-center text-white mr-4">
+                                        <i class="fas fa-shield-alt"></i>
+                                    </div>
+                                    <span class="font-medium text-[#654321]">Secure & Private</span>
+                                </div>
+                                <div class="flex items-center">
+                                    <div class="w-12 h-12 rounded-full bg-[#654321] flex items-center justify-center text-white mr-4">
+                                        <i class="fas fa-lightbulb"></i>
+                                    </div>
+                                    <span class="font-medium text-[#654321]">Innovative AI</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="md:w-1/2 md:pl-12" data-animate>
+                    <h2 class="text-3xl font-bold text-[#8B0000] mb-6">Our Technology</h2>
+                    <div class="space-y-6">
+                        <div class="flex">
+                            <div class="mr-6">
+                                <div class="w-14 h-14 rounded-xl bg-[#8B0000] flex items-center justify-center text-white">
+                                    <i class="fas fa-robot text-xl"></i>
+                                </div>
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-bold text-[#654321] mb-2">Advanced Models</h3>
+                                <p class="text-gray-600">
+                                    We use state-of-the-art natural language processing to understand and process your documents with human-like comprehension.
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex">
+                            <div class="mr-6">
+                                <div class="w-14 h-14 rounded-xl bg-[#FF7F50] flex items-center justify-center text-white">
+                                    <i class="fas fa-microchip text-xl"></i>
+                                </div>
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-bold text-[#654321] mb-2">Optimized Performance</h3>
+                                <p class="text-gray-600">
+                                    Our systems are optimized for speed and efficiency, delivering results faster than traditional methods.
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex">
+                            <div class="mr-6">
+                                <div class="w-14 h-14 rounded-xl bg-[#654321] flex items-center justify-center text-white">
+                                    <i class="fas fa-chart-line text-xl"></i>
+                                </div>
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-bold text-[#654321] mb-2">Continuous Learning</h3>
+                                <p class="text-gray-600">
+                                    Our AI models continuously improve based on user feedback and new data, ensuring you always get the best results.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Contact Section -->
+    <section id="contact" class="py-20 bg-white">
+        <div class="container mx-auto px-4">
+            <div class="max-w-4xl mx-auto">
+                <div class="text-center mb-16" data-animate>
+                    <h2 class="text-3xl font-bold text-[#8B0000] mb-4">Get In Touch</h2>
+                    <p class="text-lg text-[#654321] max-w-2xl mx-auto">
+                        Have questions or feedback? We'd love to hear from you!
+                    </p>
+                </div>
+                
+                <div class="flex flex-col md:flex-row">
+                    <div class="w-full md:w-2/3 mx-auto mb-10 md:mb-0 md:pr-8" data-animate>
+    <div class="bg-[#FFF5F5] rounded-2xl p-8 h-full">
+        <h3 class="text-xl font-bold text-[#654321] mb-6">Contact Information</h3>
+        
+        <div class="space-y-6">
+            <div class="flex items-start">
+                <div class="w-12 h-12 rounded-xl bg-[#8B0000] flex items-center justify-center text-white mr-4">
+                    <i class="fas fa-envelope"></i>
+                </div>
+                <div>
+                    <h4 class="font-medium text-[#654321]">Email Us</h4>
+                    <p class="text-gray-600">manoj.bhor@emcure.com</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+    </section>
+    
+    <!-- Footer -->
+    <footer class="bg-[#8B0000] text-white pt-20 relative">
+        <div class="footer-wave"></div>
+        <div class="bg-[#8B0000] pb-12">
+            <div class="container mx-auto px-4">
+                <!-- <div class="flex flex-col md:flex-row justify-between"> -->
+                    <!-- <div class="mb-8 md:mb-0">
+                        <a href="#" class="flex items-center space-x-2 mb-4">
+                            <div class="w-10 h-10 rounded-full bg-white flex items-center justify-center text-[#8B0000]">
+                                <i class="fas fa-brain text-xl"></i>
+                            </div>
+                            <span class="logo-text text-2xl font-bold text-white">AI Productivity</span>
+                        </a>
+                        <p class="max-w-xs text-gray-200">
+                            Empowering your workflow with intelligent AI tools designed to save you time and boost efficiency.
+                        </p>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 md:grid-cols-3 gap-8">
+                        <div>
+                            <h4 class="text-lg font-bold mb-4">Modules</h4>
+                            <ul class="space-y-2">
+                                <li><a href="#" class="text-gray-200 hover:text-white transition">PPT to MP3</a></li>
+                                <li><a href="#" class="text-gray-200 hover:text-white transition">Document Summarizer</a></li>
+                                <li><a href="#" class="text-gray-200 hover:text-white transition">PDF to Questionnaire</a></li>
+                                <li><a href="#" class="text-gray-200 hover:text-white transition">PPT Generator</a></li>
+                                <li><a href="#" class="text-gray-200 hover:text-white transition">Flowchart Generator</a></li>
+                            </ul>
+                        </div>
+                        
+                        <div>
+                            <h4 class="text-lg font-bold mb-4">Company</h4>
+                            <ul class="space-y-2">
+                                <li><a href="#" class="text-gray-200 hover:text-white transition">About Us</a></li>
+                                <li><a href="#" class="text-gray-200 hover:text-white transition">Careers</a></li>
+                                <li><a href="#" class="text-gray-200 hover:text-white transition">Blog</a></li>
+                                <li><a href="#" class="text-gray-200 hover:text-white transition">Press</a></li>
+                                <li><a href="#" class="text-gray-200 hover:text-white transition">Partners</a></li>
+                            </ul>
+                        </div>
+                        
+                        <div>
+                            <h4 class="text-lg font-bold mb-4">Legal</h4>
+                            <ul class="space-y-2">
+                                <li><a href="#" class="text-gray-200 hover:text-white transition">Privacy Policy</a></li>
+                                <li><a href="#" class="text-gray-200 hover:text-white transition">Terms of Service</a></li>
+                                <li><a href="#" class="text-gray-200 hover:text-white transition">Cookie Policy</a></li>
+                                <li><a href="#" class="text-gray-200 hover:text-white transition">GDPR</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div> -->
+                
+                <div class="border-t border-gray-700 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center">
+                    <p class="text-gray-300 mb-4 md:mb-0">
+                        © 2025 AI Productivity, All rights reserved.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </footer>
+    
+    <script>
+        // Mobile menu toggle
+        const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+        const mobileMenu = document.getElementById('mobileMenu');
+        
+        mobileMenuBtn.addEventListener('click', () => {
+            mobileMenu.classList.toggle('hidden');
+        });
+        
+        // Sticky nav on scroll
+        const mainNav = document.getElementById('mainNav');
+        
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 50) {
+                mainNav.classList.add('shadow-md');
+                mainNav.classList.add('py-2');
+                mainNav.classList.remove('py-3');
+            } else {
+                mainNav.classList.remove('shadow-md');
+                mainNav.classList.remove('py-2');
+                mainNav.classList.add('py-3');
+            }
+        });
+        
+        // Scroll animations
+        const animateElements = document.querySelectorAll('[data-animate]');
+        
+        const animateOnScroll = () => {
+            animateElements.forEach(element => {
+                const elementPosition = element.getBoundingClientRect().top;
+                const windowHeight = window.innerHeight;
+                
+                if (elementPosition < windowHeight - 100) {
+                    element.classList.add('animate');
+                }
+            });
+        };
+        
+        window.addEventListener('scroll', animateOnScroll);
+        window.addEventListener('load', animateOnScroll);
+        
+        // Module demo functionality
+        const moduleCards = document.querySelectorAll('.module-card');
+        const moduleDemo = document.getElementById('moduleDemo');
+        const backToDashboard = document.getElementById('backToDashboard');
+        const uploadContainer = document.getElementById('uploadContainer');
+        const fileUpload = document.getElementById('fileUpload');
+        const processingSection = document.getElementById('processingSection');
+        const resultSection = document.getElementById('resultSection');
+        const progressFill = document.getElementById('progressFill');
+        const progressText = document.getElementById('progressText');
+        
+        // Show module demo when a module card is clicked
+        moduleCards.forEach(card => {
+            card.addEventListener('click', () => {
+                document.querySelector('main').style.display = 'none';
+                moduleDemo.classList.remove('hidden');
+                window.scrollTo(0, 0);
+            });
+        });
+        
+        // Back to dashboard button
+        backToDashboard.addEventListener('click', () => {
+            moduleDemo.classList.add('hidden');
+            document.querySelector('main').style.display = 'block';
+        });
+        
+        // File upload interactions
+        uploadContainer.addEventListener('click', () => {
+            fileUpload.click();
+        });
+        
+        uploadContainer.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadContainer.classList.add('dragover');
+        });
+        
+        uploadContainer.addEventListener('dragleave', () => {
+            uploadContainer.classList.remove('dragover');
+        });
+        
+        uploadContainer.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadContainer.classList.remove('dragover');
+            handleFileUpload(e.dataTransfer.files[0]);
+        });
+        
+        fileUpload.addEventListener('change', (e) => {
+            if (e.target.files.length) {
+                handleFileUpload(e.target.files[0]);
+            }
+        });
+        
+        function handleFileUpload(file) {
+            // Show processing section
+            uploadContainer.classList.add('hidden');
+            processingSection.classList.remove('hidden');
+            
+            // Simulate processing
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += Math.random() * 10;
+                if (progress > 100) progress = 100;
+                
+                progressFill.style.width = `${progress}%`;
+                progressText.textContent = `${Math.round(progress)}% complete`;
+                
+                if (progress === 100) {
+                    clearInterval(interval);
+                    setTimeout(() => {
+                        processingSection.classList.add('hidden');
+                        resultSection.classList.remove('hidden');
+                        createConfetti();
+                    }, 500);
+                }
+            }, 300);
+        }
+        
+        // Create confetti effect
+        function createConfetti() {
+            const colors = ['#FF7F50', '#8B0000', '#654321', '#FF6B6B', '#FFFFFF'];
+            
+            for (let i = 0; i < 100; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.left = `${Math.random() * 100}%`;
+                confetti.style.transform = `rotate(${Math.random() * 360}deg)`;
+                confetti.style.animation = `confetti-fall ${Math.random() * 3 + 2}s linear forwards`;
+                confetti.style.animationDelay = `${Math.random() * 2}s`;
+                
+                document.getElementById('resultSection').appendChild(confetti);
+                
+                // Remove confetti after animation
+                setTimeout(() => {
+                    confetti.remove();
+                }, 5000);
+            }
+        }
+        
+        // Smooth scrolling for navigation links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                const targetId = this.getAttribute('href');
+                if (targetId === '#') return;
+                
+                const targetElement = document.querySelector(targetId);
+                if (targetElement) {
+                    window.scrollTo({
+                        top: targetElement.offsetTop - 80,
+                        behavior: 'smooth'
+                    });
+                    
+                    // Close mobile menu if open
+                    if (!mobileMenu.classList.contains('hidden')) {
+                        mobileMenu.classList.add('hidden');
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>

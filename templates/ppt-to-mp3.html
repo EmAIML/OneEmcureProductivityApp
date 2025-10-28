@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PPT to Audio Generator</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+
+/* ===== Base Styles ===== */
+body {
+  font-family: 'Poppins', 'Segoe UI', sans-serif;
+  background: #fff8dc; 
+  margin: 0;
+  padding: 60px 20px;
+  color: #2c3e50;
+  text-align: center;
+}
+
+/* ===== Container ===== */
+.container {
+background: #ffffff; 
+  padding: 30px 25px;
+  max-width: 720px;
+  margin: auto;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.container:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.15);
+}
+
+/* ===== Upload Section ===== */
+.upload-section {
+  margin: 30px 0;
+}
+
+/* ===== File Input ===== */
+input[type="file"] {
+  padding: 14px;
+  background: #fefefe;
+  border: 2px dashed #b22222; 
+  border-radius: 12px;
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto 25px;
+  cursor: pointer;
+  transition: border-color 0.3s ease;
+}
+
+input[type="file"]:hover {
+  border-color: #5c1a00;
+}
+
+/* ===== Button Styling ===== */
+button {
+  background: linear-gradient(135deg, #b22222, #980c0c); 
+  color: white;
+  padding: 14px 30px;
+  border: none;
+  border-radius: 50px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(178, 34, 34, 0.3);
+  transition: background 0.3s ease, transform 0.2s ease;
+}
+
+button:hover {
+  background: linear-gradient(135deg, #9c0d0d, #8a1409);
+  transform: translateY(-2px);
+}
+
+/* ===== Download Link ===== */
+.download-link {
+  display: inline-block;
+  margin-top: 25px;
+  padding: 14px 30px;
+  background: linear-gradient(135deg, #e02f2f, #b00909);
+  color: white;
+  text-decoration: none;
+  border-radius: 50px;
+  font-weight: 600;
+  box-shadow: 0 8px 20px rgba(92, 26, 0, 0.3);
+  transition: background 0.3s ease, transform 0.2s ease;
+}
+
+.download-link:hover {
+  background: linear-gradient(135deg, #d31b1b, #720606);
+  transform: translateY(-2px);
+}
+
+/* ===== Progress Bar ===== */
+.progress-container {
+  width: 100%;
+  max-width: 500px;
+  height: 25px;
+  background-color: #eee;
+  border-radius: 12px;
+  margin: 30px auto 10px;
+  overflow: hidden;
+  box-shadow: inset 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.progress-bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(135deg, #b22222, #5c1a00); 
+  border-radius: 12px 0 0 12px;
+  transition: width 0.3s ease;
+}
+
+/* ===== Timer Text ===== */
+.timer-text {
+  font-weight: 600;
+  font-size: 16px;
+  color: #b22222;
+  margin-top: 5px;
+}
+.back-link {
+  display: inline-block;
+  margin-top: 30px;
+  padding: 12px 25px;
+  background: linear-gradient(135deg, #8B4513, #5C3317);
+  color: white;
+  text-decoration: none;
+  border-radius: 50px;
+  font-weight: 600;
+  box-shadow: 0 6px 16px rgba(139, 69, 19, 0.3); 
+  transition: background 0.3s ease, transform 0.2s ease;
+}
+
+/* ===== Responsive Design ===== */
+@media (max-width: 600px) {
+  .container {
+    padding: 15px 35px;
+  }
+
+  input[type="file"],
+  button,
+  .download-link,
+  .progress-container {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+/* ===== Wrapper to align header and container ===== */
+.wrapper {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+/* ===== Header Style (Matching Container Width) ===== */
+.header {
+  background: linear-gradient(135deg, #b22222, #5c1a00);
+  color: white;
+  padding: 15px 35px;
+  border-top-left-radius: 16px;
+  border-top-right-radius: 16px;
+}
+</style>
+
+</head>
+<body>
+<div class="wrapper">
+    <div class="header text-center">
+      <h1 class="text-3xl md:text-4xl font-bold mb-2 animate__animated animate__fadeInDown">
+        <i class="fas fa-file-powerpoint mr-2"></i> PPT to Audio Story Generator
+      </h1>
+      <p class="text-white/90 animate__animated animate__fadeIn animate__delay-1s">
+        Transform your presentations into engaging audio stories
+      </p>
+    </div>
+  <div class="container">
+    <form action="/upload" method="POST" enctype="multipart/form-data" id="uploadForm">
+      <div class="upload-section">
+        <input type="file" id="pptInput" name="ppt_file" accept=".ppt,.pptx" required />
+        <button id="generateBtn" type="submit">Generate Audio</button>
+      </div>
+    </form>
+
+    <div id="progressWrapper" style="display:none;">
+      <div class="progress-container">
+        <div class="progress-bar" id="progressBar"></div>
+      </div>
+      <div class="timer-text" id="timerText">Elapsed time: 0s</div>
+    </div>
+
+    <p id="status">Please upload your PowerPoint (.ppt or .pptx) file.</p>
+
+    {% if audio_file %}
+      <div class="result">
+        <h2>🎧 Your audio story is ready!</h2>
+
+        <!-- Audio player -->
+        <audio controls>
+          <source src="{{ url_for('static', filename='audio/' + audio_file) }}" type="audio/mpeg">
+          Your browser does not support the audio element.
+        </audio>
+
+        <!--Download link -->
+        <br><br>
+        <a class="download-link" 
+           href="{{ url_for('static', filename='audio/' + audio_file) }}" 
+           download="{{ audio_file }}">
+           Download MP3
+        </a>
+      </div>
+    {% endif %}
+
+    <p class="back-dashboard"><a href="{{ url_for('home') }}">← Back to Dashboard</a></p>
+   </div>
+  </div>
+
+  <script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const form = document.getElementById("uploadForm");
+    const statusText = document.getElementById("status");
+    const progressWrapper = document.getElementById("progressWrapper");
+    const progressBar = document.getElementById("progressBar");
+    const timerText = document.getElementById("timerText");
+
+    let timerInterval;
+    let currentPercent = 0;
+
+    form.addEventListener("submit", function (e) {
+      // Show progress bar and hide status
+      statusText.style.display = "none";
+      progressWrapper.style.display = "block";
+      progressBar.style.width = "0%";
+      currentPercent = 0;
+      timerText.textContent = `Conversion progress: 0%`;
+
+      // Increment progress bar percentage every second until 95%
+      timerInterval = setInterval(() => {
+        if (currentPercent < 95) {
+          currentPercent++;
+          progressBar.style.width = currentPercent + "%";
+          timerText.textContent = `Conversion progress: ${currentPercent}%`;
+        }
+      }, 1000);
+    });
+  });
+</script>
+</body>
+</html>
