@@ -12,7 +12,7 @@ import xml.sax.saxutils as saxutils
 
 # AWS Clients
 bedrock_client = boto3.client("bedrock-runtime", region_name="ap-south-1")
-polly_client = boto3.client("polly")
+polly_client = boto3.client("polly", region_name="ap-south-1")
 
 # Configuration
 MODEL_ID = "meta.llama3-70b-instruct-v1:0"
