@@ -1,11 +1,15 @@
 from flask import Flask, render_template, request, send_from_directory, send_file, redirect, url_for, jsonify  
 import os
+import boto3
 import json  
 from datetime import datetime  
 import shutil 
 import pandas as pd
 from io import BytesIO
 from werkzeug.utils import secure_filename
+# Ensure a default AWS region is set before importing modules that create clients
+boto3.setup_default_session(region_name=os.getenv('AWS_REGION', 'ap-south-1'))
+
 from modules.models import process_pptx
 from modules.model2 import main as generate_audio_story
 from modules.ganttchart import generate_gantt_chart

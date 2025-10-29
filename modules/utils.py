@@ -132,7 +132,7 @@ def extract_text_from_ppt(filepath, skip_pages=None):
 
  
 def call_claude_model(prompt):
-    bedrock = boto3.client('bedrock-runtime')
+    bedrock = boto3.client('bedrock-runtime', region_name='ap-south-1')
  
     body = {
         "anthropic_version": "bedrock-2023-05-31",  # Required for Claude models
