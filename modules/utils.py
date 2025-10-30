@@ -1,228 +1,259 @@
 import os
-import uuid
-import PyPDF2
-import docx
-import openpyxl
-from pptx import Presentation
+import base64
 import boto3
 import json
-from pdf2image import convert_from_path
-import pytesseract
+import time
 from PIL import Image
-import io
+from pdf2image import convert_from_path
+from botocore.exceptions import ClientError
+from docx import Document
 
+# === SETTINGS ===
+OUTPUT_FILE = "generated_result.txt"
 
-# ✅ Full path to Tesseract executable
-pytesseract.pytesseract.tesseract_cmd = r'C:\Users\10028512\AppData\Local\Programs\Tesseract-OCR\tesseract.exe'
+# === UTILITY FUNCTIONS ===
 
-# ✅ Set environment variable to the folder CONTAINING the `tessdata` folder (with trailing backslash)
-os.environ['TESSDATA_PREFIX'] = r'C:\Users\10028512\AppData\Local\Programs\Tesseract-OCR\\'
- 
-def extract_text_from_file(filepath, skip_pages=None):
-    ext = os.path.splitext(filepath)[1].lower()
-    if ext == '.pdf':
-        return extract_text_from_pdf(filepath, skip_pages=skip_pages)
-    elif ext in ['.docx', '.doc']:
-        return extract_text_from_word(filepath, skip_pages=skip_pages)
-    elif ext in ['.xlsx']:
-        return extract_text_from_excel(filepath, skip_pages=skip_pages)
-    elif ext in ['.txt']:
-        return extract_text_from_txt(filepath, skip_pages=skip_pages)
-    elif ext in ['.pptx']:
-        return extract_text_from_ppt(filepath, skip_pages=skip_pages)
-    else:
-        return "Unsupported file type."
+def pdf_to_images(pdf_path):
+    print("Converting PDF pages to images...")
+    return convert_from_path(pdf_path, dpi=300)
 
+def extract_text_from_image(image_path, max_retries=5):
+    print(f"Extracting text from image: {image_path}")
+    client = boto3.client("bedrock-runtime", region_name="ap-south-1")
 
-def extract_text_from_pdf(filepath, skip_pages=None):
-    skip_pages = skip_pages or []
-    text = ''
-    all_pages_empty = True  # Track if all pages are non-textual
+    image = Image.open(image_path)
+    max_width = 1024
+    if image.width > max_width:
+        w_percent = max_width / float(image.width)
+        h_size = int(float(image.height) * w_percent)
+        image = image.resize((max_width, h_size), Image.LANCZOS)
+        image.save(image_path)
 
-    with open(filepath, 'rb') as file:
-        reader = PyPDF2.PdfReader(file)
-        num_pages = len(reader.pages)
+    with open(image_path, "rb") as f:
+        image_bytes = f.read()
+    base64_image = base64.b64encode(image_bytes).decode("utf-8")
 
-        for i, page in enumerate(reader.pages):
-            if i in skip_pages:
-                continue
-            page_text = page.extract_text()
-            if page_text and page_text.strip():
-                all_pages_empty = False
-                text += page_text + '\n'
-            else:
-                # If the page is empty, try OCR on this page
-                images = convert_from_path(filepath, first_page=i+1, last_page=i+1)
-                if images:
-                    ocr_text = pytesseract.image_to_string(images[0])
-                    text += ocr_text + '\n'
-
-    # If every page was empty (scanned), use OCR on the entire PDF as a fallback
-    if all_pages_empty:
-        print("[INFO] No extractable text found, using OCR for all pages.")
-        images = convert_from_path(filepath)
-        text = ''
-        for i, image in enumerate(images):
-            if i in skip_pages:
-                continue
-            ocr_text = pytesseract.image_to_string(image, lang='eng')
-            text += ocr_text + '\n'
-
-    return text
-
-
-
-def extract_text_from_word(filepath, skip_pages=None):
-    skip_pages = skip_pages or []
-    doc = docx.Document(filepath)
-    text = ''
-    paragraphs = doc.paragraphs
-    # Treat paragraphs as "pages" here: For example, 20 paragraphs = 1 page
-    paragraphs_per_page = 20
-    total_pages = (len(paragraphs) + paragraphs_per_page - 1) // paragraphs_per_page
-
-    for page_num in range(total_pages):
-        if page_num in skip_pages:
-            continue
-        start = page_num * paragraphs_per_page
-        end = start + paragraphs_per_page
-        for para in paragraphs[start:end]:
-            text += para.text + '\n'
-    return text
-
-def extract_text_from_excel(filepath, skip_pages=None):
-    skip_pages = skip_pages or []
-    wb = openpyxl.load_workbook(filepath)
-    text = ''
-    # Treat sheets as pages; skip the specified sheets (0-based index)
-    sheets = list(wb)
-    for i, sheet in enumerate(sheets):
-        if i in skip_pages:
-            continue
-        for row in sheet.iter_rows(values_only=True):
-            text += ' '.join([str(cell) if cell else '' for cell in row]) + '\n'
-    return text
-
-def extract_text_from_txt(filepath, skip_pages=None):
-    skip_pages = skip_pages or []
-    lines_per_page = 40
-    text = ''
-    with open(filepath, 'r', encoding='utf-8') as f:
-        lines = f.readlines()
-        total_pages = (len(lines) + lines_per_page - 1) // lines_per_page
-        for page_num in range(total_pages):
-            if page_num in skip_pages:
-                continue
-            start = page_num * lines_per_page
-            end = start + lines_per_page
-            text += ''.join(lines[start:end])
-    return text
-
-def extract_text_from_ppt(filepath, skip_pages=None):
-    skip_pages = skip_pages or []
-    prs = Presentation(filepath)
-    text = ''
-    for i, slide in enumerate(prs.slides):
-        if i in skip_pages:
-            continue
-        for shape in slide.shapes:
-            if hasattr(shape, "text"):
-                text += shape.text + '\n'
-    return text
-
- 
-def call_claude_model(prompt):
-    bedrock = boto3.client('bedrock-runtime', region_name='ap-south-1')
- 
-    body = {
-        "anthropic_version": "bedrock-2023-05-31",  # Required for Claude models
-        "messages": [
-            {"role": "user", "content": prompt}
-        ],
-        "max_tokens": 1000,
-        "temperature": 0.5,
-        "top_k": 250,
-        "top_p": 1,
-        "stop_sequences": []
-    }
- 
-    response = bedrock.invoke_model(
-        modelId="anthropic.claude-3-haiku-20240307-v1:0",
-        body=json.dumps(body),
-        contentType="application/json",
-        accept="application/json"
+    prompt_text = (
+        "Extract only the relevant and meaningful content (not title, headers, or footers) "
+        "from this image. Do not summarize. Just output the plain clean text."
     )
- 
-    result = json.loads(response['body'].read())
- 
-    # Claude returns a 'content' list with one dictionary
-    final_text = result['content'][0]['text'].strip()  
-    return final_text
 
+    payload = {
+        "anthropic_version": "bedrock-2023-05-31",
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "image", "source": {"type": "base64", "media_type": "image/png", "data": base64_image}},
+                    {"type": "text", "text": prompt_text},
+                ],
+            }
+        ],
+        "max_tokens": 8000,
+    }
 
-def process_document_file(filepath, operation, word_limit, skip_pages_raw, upload_folder):
-    """
-    Main utility function to handle:
-    - parsing skip pages
-    - extracting text
-    - building prompt
-    - calling AI model
-    - saving output to file
-    Returns (result_text, output_filename)
-    """
-
-    # Parse skip pages if any (0-based)
-    skip_pages = []
-    if skip_pages_raw:
+    retries = 0
+    while retries < max_retries:
         try:
-            skip_pages = [int(p.strip()) - 1 for p in skip_pages_raw.split(',') if p.strip().isdigit()]
-        except ValueError:
-            skip_pages = []
+            response = client.invoke_model(
+                modelId="anthropic.claude-3-haiku-20240307-v1:0",
+                contentType="application/json",
+                accept="application/json",
+                body=json.dumps(payload).encode("utf-8"),
+            )
 
-    # Extract text (implement your own function)
-    extracted_text = extract_text_from_file(filepath, skip_pages=skip_pages if operation == 'questions' else [])
+            result_json = json.loads(response["body"].read().decode("utf-8"))
+            clean_text = ""
+            for item in result_json.get("content", []):
+                if item["type"] == "text":
+                    clean_text += item["text"]
 
-    # Build prompt
-    if operation == 'summary':
-        prompt = f"Please summarize the following content in around {word_limit} words:\n\n{extracted_text}"
+            return clean_text.strip()
+
+        except ClientError as e:
+            if e.response["Error"]["Code"] == "ThrottlingException":
+                wait_time = 2 ** retries
+                print(f"⚠️ Throttled. Waiting {wait_time}s before retrying... (Attempt {retries + 1})")
+                time.sleep(wait_time)
+                retries += 1
+            else:
+                raise
+        except Exception as e:
+            print(f"Unexpected error: {e}")
+            raise
+
+    raise Exception("Max retries reached. Giving up.")
+
+def extract_text_and_images_from_docx(docx_path):
+    print(f"Extracting text and images from Word file: {docx_path}")
+    doc = Document(docx_path)
+    full_text = ""
+
+    # Extract paragraph text
+    for para in doc.paragraphs:
+        if para.text.strip():
+            full_text += para.text + "\n"
+
+    # Extract embedded images safely
+    image_counter = 1
+    for rel in doc.part._rels.values():
+        if "image" in rel.reltype and getattr(rel, "target_part", None):
+            image_bytes = rel.target_part.blob
+            image_path = f"docx_image_{image_counter}.png"
+            with open(image_path, "wb") as f:
+                f.write(image_bytes)
+            print(f"Extracting text from embedded image: {image_path}")
+
+            try:
+                image_text = extract_text_from_image(image_path)
+                full_text += f"\n\n--- Image {image_counter} ---\n{image_text}"
+                image_counter += 1
+            except Exception as e:
+                print(f"Error extracting text from image {image_path}: {e}")
+            finally:
+                os.remove(image_path)
+
+    return full_text
+
+def generate_summary_from_text(text, word_limit=100, max_retries=5):
+    print(f"Generating summary (limit {word_limit} words)...")
+    prompt_text = f"Summarize the following text in at most {word_limit} words. Focus on the main content and keep it concise:\n\n{text}"
+
+    client = boto3.client("bedrock-runtime", region_name="ap-south-1")
+    payload = {
+        "anthropic_version": "bedrock-2023-05-31",
+        "messages": [{"role": "user", "content": [{"type": "text", "text": prompt_text}]}],
+        "max_tokens": 3000,
+    }
+
+    retries = 0
+    while retries < max_retries:
+        try:
+            response = client.invoke_model(
+                modelId="anthropic.claude-3-haiku-20240307-v1:0",
+                contentType="application/json",
+                accept="application/json",
+                body=json.dumps(payload).encode("utf-8"),
+            )
+
+            result_json = json.loads(response["body"].read().decode("utf-8"))
+            summary = ""
+            for item in result_json.get("content", []):
+                if item["type"] == "text":
+                    summary += item["text"]
+
+            return summary.strip()
+
+        except ClientError as e:
+            if e.response["Error"]["Code"] == "ThrottlingException":
+                wait_time = 2 ** retries
+                print(f"⚠️ Throttled. Waiting {wait_time}s before retrying... (Attempt {retries + 1})")
+                time.sleep(wait_time)
+                retries += 1
+            else:
+                raise
+        except Exception as e:
+            print(f"Unexpected error while generating summary: {e}")
+            raise
+
+    raise Exception("Max retries reached while generating summary.")
+
+def generate_mcqs_from_text(text, max_retries=5):
+    print("Generating MCQs from extracted text...")
+    prompt_text = (
+        "Based only on the following text, generate exactly 40 high-quality, fact-based multiple choice questions.\n\n"
+        "Use this strict format:\n"
+        "Q1. <Question>\n"
+        "A. <Option A>\n"
+        "B. <Option B>\n"
+        "C. <Option C>\n"
+        "D. <Option D>\n"
+        "Correct Answer: <A/B/C/D>\n"
+        "Explanation: <Short explanation>\n\n"
+        "Rules:\n"
+        "- Do NOT make up any information not present in the text.\n"
+        "- Only generate questions that are clearly answerable from the content.\n"
+        "- Ensure no duplicate or overly similar questions.\n"
+        "- All questions must be factual.\n"
+        "- Only one correct option per question.\n"
+    )
+
+    client = boto3.client("bedrock-runtime", region_name="ap-south-1")
+    payload = {
+        "anthropic_version": "bedrock-2023-05-31",
+        "messages": [{"role": "user", "content": [{"type": "text", "text": prompt_text + "\n\nText Content:\n" + text}]}],
+        "max_tokens": 8000,
+    }
+
+    retries = 0
+    while retries < max_retries:
+        try:
+            response = client.invoke_model(
+                modelId="anthropic.claude-3-haiku-20240307-v1:0",
+                contentType="application/json",
+                accept="application/json",
+                body=json.dumps(payload).encode("utf-8"),
+            )
+
+            result_json = json.loads(response["body"].read().decode("utf-8"))
+            mcqs = ""
+            for item in result_json.get("content", []):
+                if item["type"] == "text":
+                    mcqs += item["text"]
+
+            return mcqs.strip()
+
+        except ClientError as e:
+            if e.response["Error"]["Code"] == "ThrottlingException":
+                wait_time = 2 ** retries
+                print(f"⚠️ Throttled. Waiting {wait_time}s before retrying... (Attempt {retries + 1})")
+                time.sleep(wait_time)
+                retries += 1
+            else:
+                raise
+        except Exception as e:
+            print(f"Unexpected error while generating MCQs: {e}")
+            raise
+
+    raise Exception("Max retries reached while generating MCQs.")
+
+def process_document(input_path, operation="summary", word_limit=100, pages_to_skip=[]):
+    ext = os.path.splitext(input_path)[1].lower()
+    combined_text = ""
+
+    if ext == ".pdf":
+        images = pdf_to_images(input_path)
+        for i, image in enumerate(images):
+            page_number = i + 1
+            if page_number in pages_to_skip:
+                print(f"Skipping Page {page_number}")
+                continue
+
+            image_path = f"page_{page_number}.png"
+            image.save(image_path)
+
+            try:
+                page_text = extract_text_from_image(image_path)
+                combined_text += f"\n\n--- Page {page_number} ---\n{page_text}"
+                print(f"Text extracted from Page {page_number}")
+                time.sleep(1)
+            except Exception as e:
+                print(f"Error on page {page_number}: {e}")
+
+            os.remove(image_path)
+
+    elif ext == ".docx":
+        combined_text = extract_text_and_images_from_docx(input_path)
+
     else:
-        prompt = f"""
-Generate multiple choice questions based on the following content:
+        raise Exception("Unsupported file type. Please provide PDF or Word (.docx).")
 
-Content:
-{extracted_text}
+    if not combined_text.strip():
+        raise Exception("No content extracted from document.")
 
-Instructions:
-- Generate 5–10 multiple choice questions (MCQs).
-- Each question should have exactly 4 options: A, B, C, and D.
-- Only 1 option should be correct.
-- The other 3 options should be incorrect but plausible and related to the topic.
-- After each question, indicate the correct answer.
-- Also provide a **1-line explanation** for why the correct answer is right.
-- Format the explanation like: "Explanation: ..."
-
-Format:
-Question 1:
-What is the ...?
-
-A. Option 1  
-B. Option 2  
-C. Option 3  
-D. Option 4  
-Correct Answer: B  
-Explanation: This is correct because ...
-Continue in the same format.
-"""
-
-    # Call AI model
-    response = call_claude_model(prompt)
-
-    # Save result to file
-    output_filename = f"{operation}_{uuid.uuid4().hex[:8]}.txt"
-    output_path = os.path.join(upload_folder, output_filename)
-    with open(output_path, "w", encoding="utf-8") as f:
-        f.write(response)
-
-    return response, output_filename
-
-
+    if operation == "summary":
+        return generate_summary_from_text(combined_text, word_limit=word_limit)
+    elif operation == "questions":
+        return generate_mcqs_from_text(combined_text)
+    else:
+        raise Exception("Invalid operation selected. Choose 'summary' or 'questions'.")

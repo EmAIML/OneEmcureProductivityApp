@@ -1,5 +1,6 @@
 # Web framework
 Flask==3.0.3
+msal
 
 # AWS SDK
 boto3==1.35.70
@@ -22,6 +23,8 @@ Pillow==11.0.0
 
 # Visualization
 graphviz==0.20.3
+matplotlib
+
 
 # Utilities
 Werkzeug==3.0.4

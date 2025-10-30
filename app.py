@@ -1,4 +1,5 @@
-from flask import Flask, render_template, request, send_from_directory, send_file, redirect, url_for, jsonify  
+from flask import Flask, render_template, request, send_from_directory, send_file, redirect, url_for, jsonify, session
+import msal  
 import os
 import boto3
 import json  
@@ -7,14 +8,12 @@ import shutil
 import pandas as pd
 from io import BytesIO
 from werkzeug.utils import secure_filename
-# Ensure a default AWS region is set before importing modules that create clients
-boto3.setup_default_session(region_name=os.getenv('AWS_REGION', 'ap-south-1'))
-
 from modules.models import process_pptx
 from modules.model2 import main as generate_audio_story
 from modules.ganttchart import generate_gantt_chart
-from modules.utils import process_document_file
+from modules.utils import process_document
 from modules.flowchart import process_user_input
+boto3.setup_default_session(region_name=os.getenv('AWS_REGION', 'ap-south-1'))
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads'
@@ -25,15 +24,65 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 FLOWCHART_DIR = "flowcharts"
 
 # Login page (microsoft sso)
+app.secret_key = os.urandom(24)
+ 
+# Azure App Details
+CLIENT_ID = 'cfa5c66e-bed1-4e03-a8b1-eb527942680c'
+CLIENT_SECRET = ' Wdl8Q~Zu~V3~6F5_3RdC0ydgae3Ps7I0B6iW2aof'
+TENANT_ID = '5c1f1620-2fa8-46e0-b7f6-be5a8531bf36'
+AUTHORITY = f'https://login.microsoftonline.com/{TENANT_ID}'
+SCOPE = ['User.Read']
+ 
+# MSAL confidential client
+def _build_msal_app(cache=None, authority=None):
+    return msal.ConfidentialClientApplication(
+        CLIENT_ID, authority=authority or AUTHORITY,
+        client_credential=CLIENT_SECRET, token_cache=cache
+    )
+
+def _build_auth_url():
+    return _build_msal_app().get_authorization_request_url(
+        scopes=SCOPE,
+        redirect_uri="https://productivity.oneemcure.ai/authorized",
+        response_mode='query'  # or 'form_post' if Azure requires POST
+    )
+
+
 @app.route('/')
 def login():
-    print("Login page accessed")  
     return render_template('login.html')
 
-# Home page (dashboard)
+@app.route('/login')
+def login_route():
+    auth_url = _build_auth_url()
+    return redirect(auth_url)
+
+@app.route('/authorized', methods=['GET', 'POST'])
+def authorized():
+    # Handle both GET and POST just in case
+    code = request.args.get('code') or request.form.get('code')
+    if not code:
+        return "Authorization code not found", 400
+
+    result = _build_msal_app().acquire_token_by_authorization_code(
+        code,
+        scopes=SCOPE,
+        redirect_uri="https://productivity.oneemcure.ai"
+    )
+
+    if "access_token" in result:
+        session['user'] = result.get("id_token_claims").get("preferred_username")
+        return redirect(url_for('home'))
+    else:
+        return f"Login failed: {result.get('error_description')}"
+
 @app.route('/home')
 def home():
-    return render_template('index.html')
+    email = session.get('user')
+    if not email:
+        return redirect(url_for('login_route'))  
+    return render_template('index.html', email=email)
+
 
 # PPT to MP3 conversion 
 @app.route('/ppt-to-mp3', methods=['GET'])
@@ -99,18 +148,27 @@ def process():
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
     file.save(filepath)
 
-    # Call the utility function that does all processing & returns result and output filename
-    result_text, output_filename = process_document_file(
-        filepath=filepath,
+    # --- Convert skip_pages_raw (string) to list of ints ---
+    if skip_pages_raw:
+        pages_to_skip = [int(x.strip()) for x in skip_pages_raw.split(',') if x.strip().isdigit()]
+    else:
+        pages_to_skip = []
+
+    # --- Call process_document correctly ---
+    result_text = process_document(
+        input_path=filepath,
         operation=operation,
-        word_limit=word_limit,
-        skip_pages_raw=skip_pages_raw,
-        upload_folder=app.config['UPLOAD_FOLDER']
+        word_limit=int(word_limit),
+        pages_to_skip=pages_to_skip
     )
 
-    # --- Log the task here ---
-    output_filepath = os.path.join(app.config['UPLOAD_FOLDER'], output_filename) if output_filename else None
+    # --- Save output to a file for download ---
+    output_filename = "processed_output.txt"
+    output_filepath = os.path.join(app.config['UPLOAD_FOLDER'], output_filename)
+    with open(output_filepath, "w", encoding="utf-8") as f:
+        f.write(result_text)
 
+    # --- Return response to frontend ---
     return render_template('doc-summarizer.html', result=result_text, download_file=output_filename)
 
 @app.route('/download/<filename>', endpoint='download_file')

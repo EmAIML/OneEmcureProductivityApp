@@ -51,73 +51,77 @@ def parse_haiku_output(output_text):
         return None
 
 def generate_flowchart(data, filename_base):
+    import graphviz
+
     dot = graphviz.Digraph(format='jpg')
-    dot.attr(rankdir='TB')  # vertical layout
+    dot.attr(rankdir='TB')  # Vertical layout (Top -> Bottom)
 
     nodes = data.get("nodes", {})
     edges = data.get("edges", [])
 
-    # Convert nodes list to dict if needed
+    # Convert list of nodes to dict if needed
     if isinstance(nodes, list):
         try:
-            nodes = {
-                node["id"]: {
-                    k: v for k, v in node.items() if k != "id"
-                } for node in nodes
-            }
+            nodes = {node["id"]: {k: v for k, v in node.items() if k != "id"} for node in nodes}
         except Exception as e:
-            print("Error converting nodes list to dict:", e)
-            return
+            print(f"Error converting nodes list to dict: {e}")
+            return None
 
-    # Ensure Start and End nodes exist
-    start_nodes = [nid for nid, node in nodes.items() if node.get('label', '').lower() == 'start']
-    if not start_nodes:
-        nodes["start"] = {"label": "Start", "type": "process"}
-    end_nodes = [nid for nid, node in nodes.items() if node.get('label', '').lower() == 'end']
-    if not end_nodes:
-        nodes["end"] = {"label": "End", "type": "process"}
-
-    # Collect decision node IDs for edge label logic
     decision_nodes = {nid for nid, node in nodes.items() if node.get("type") == "decision"}
+    end_node_ids = {nid for nid, node in nodes.items() if node.get("type") == "end" or node.get("label", "").lower() == "end"}
 
-    # Add nodes to flowchart with correct shapes
+    # --- Shape map ---
+    shape_map = {
+        "start": "oval",
+        "end": "oval",
+        "input": "parallelogram",
+        "output": "parallelogram",
+        "decision": "diamond",
+        "process": "box",
+        "subroutine": "cds"
+    }
+
+    # --- Add nodes ---
     for node_id, node_info in nodes.items():
         label = node_info.get("label", node_id)
-        node_type = node_info.get("type", "process")
+        node_type = node_info.get("type", "process").lower()
+        shape = shape_map.get(node_type, "box")
 
-        if node_type == "decision":
-            dot.node(node_id, label, shape="diamond", style="filled", fillcolor="lightyellow")
-        elif label.lower() in ("start", "end"):
-            # We'll handle the End node in a special subgraph for rank=sink below
-            if label.lower() == "start":
-                dot.node(node_id, label, shape="oval", style="filled", fillcolor="lightblue")
-            # Skip adding End node here to add it in subgraph later
-        else:
-            dot.node(node_id, label, shape="box")
+        fillcolor = {
+            "start": "#A9CCE3",
+            "end": "#A9CCE3",
+            "process": "#D5F5E3",
+            "decision": "#F9E79F",
+            "input": "#E5E5E5",
+            "output": "#E5E5E5",
+            "subroutine": "#D6DBDF"
+        }.get(node_type, "#FFFFFF")
 
-    # Add End node in a subgraph with rank=sink to push it to the bottom
-    with dot.subgraph() as s:
-        s.attr(rank='sink')
-        for node_id, node_info in nodes.items():
-            label = node_info.get("label", node_id)
-            if label.lower() == "end":
-                s.node(node_id, label, shape="oval", style="filled", fillcolor="lightblue")
+        dot.node(node_id, label, shape=shape, style="filled", fillcolor=fillcolor)
 
-    # Add edges; only label edges from decision nodes
-    for edge in edges:
-        from_node = edge["from"]
-        to_node = edge["to"]
+    # --- Add edges ---
+    for i, edge in enumerate(edges):
+        from_node = edge.get("from") or edge.get("source")
+        to_node = edge.get("to") or edge.get("target")
         label = edge.get("label", "")
 
-        # Show edge label only if from_node is decision node and label exists
+        if not from_node or not to_node:
+            print(f"⚠️ Skipping malformed edge at index {i}: {edge}")
+            continue
+
+        # Label only decision edges
         if from_node in decision_nodes and label:
             dot.edge(from_node, to_node, label=label)
         else:
             dot.edge(from_node, to_node)
 
-    # Save image
-    output_path = dot.render(filename=filename_base, cleanup=False)
-    return output_path
+    # --- Save output ---
+    try:
+        output_path = dot.render(filename=filename_base, cleanup=True)
+        return output_path
+    except Exception as e:
+        print(f"Error rendering flowchart with Graphviz: {e}")
+        return None
 
 
 
@@ -147,31 +151,59 @@ def process_user_input(user_query: str):
     last_flowchart = load_last_flowchart()
 
     if last_flowchart:
+        # <<< PROMPT FOR UPDATING AN EXISTING FLOWCHART >>>
         prompt = f"""
-You are a flowchart generator that can update an existing flowchart based on new user instructions.
+You are an intelligent **Flowchart Editor**.  
+Your task is to update an existing process flowchart JSON based on a user's request, without changing unrelated logic.
 
-Here is the current flowchart JSON:
-{json.dumps(last_flowchart)}
+---
+### Current Flowchart
 
-User wants to update it with this request:
+---
+### User Request
 "{user_query}"
 
-Return the updated flowchart JSON with nodes and edges.
-Make sure Start and End nodes remain.
-Only return the JSON object.
+---
+### Editing Guidelines
+
+1. Identify whether the user wants to **add**, **remove**, or **modify** steps (nodes) or transitions (edges).
+2. Modify only the requested parts. Do not alter any other part of the flowchart.
+3. When adding new nodes:
+   * Use correct `"type"` values: `start`, `end`, `process`, `decision`, `input`, `output`, or `subroutine`.
+   * Use meaningful `"label"` values (e.g., `"Check if Sum > 100"`).
+   * Maintain proper **Yes/No labels** for all decision edges and where ever required and specified.
+4. Ensure:
+   * Flowchart has one `"start"` and at least one `"end"` node.
+   * All edges connect valid node IDs.
+   * Logical flow and decision labels are preserved.
+5. Return **only** the updated flowchart JSON (no text or explanation).
+
+---
+Now output the updated JSON flowchart:
 """
     else:
+        # <<< PROMPT FOR CREATING A NEW FLOWCHART >>>
         prompt = f"""
-You are a flowchart generator. Extract a step-by-step flowchart from the following user request.
-Return **ONLY** a JSON object with:
-- nodes: dictionary with node IDs as keys and values with "label" and "type" ("process" or "decision")
-- edges: list of objects with "from", "to", and optional "label" for edge text (e.g. 'Yes' or 'No')
+You are an expert **Flowchart Generator**.  
+Your job is to create a **clear, complete, and properly labeled flowchart** in JSON format for the process described below.
+Every start/end node → use oval/ellipse.
 
-Include Start and End nodes.
+Every input/output → use parallelogram.
 
-User request: "{user_query}"
+Every action or computation → use rectangle.
 
-Do not include any explanation, markdown, or additional text. Only return the JSON.
+Every conditional check → use diamond and label outgoing edges with "Yes"/"No" (or similar).
+
+Every subroutine → use rounded rectangle.
+---
+### User Request
+"{user_query}"
+
+---
+### Step 1: Input Validation
+If the input is unclear, incomplete, or nonsensical (e.g., random letters, a single vague word, or no actionable steps):
+Return only: "The provided data is unclear. Please provide a clear description."
+{{"error": "Invalid or incomplete input. Please provide a clear, step-by-step description of the process."}}
 """
 
     haiku_text = call_haiku(prompt)

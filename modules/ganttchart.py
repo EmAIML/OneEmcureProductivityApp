@@ -46,8 +46,8 @@ def generate_gantt_chart(excel_path, include_saturday=True, include_sunday=True)
     """
 
     # Read Excel
-    df = pd.read_excel(excel_path)
 
+    df = pd.read_excel(excel_path, engine='openpyxl')
     # Validate columns
     required_columns = ['Task', 'Start Date', 'End Date']
     if not all(col in df.columns for col in required_columns):
@@ -61,13 +61,22 @@ def generate_gantt_chart(excel_path, include_saturday=True, include_sunday=True)
     df['Duration (Days)'] = (df['End Date'] - df['Start Date']).dt.days + 1
 
     # --- Claude AI Summary ---
-    prompt = f"""You are a smart project analyst. Below is a table of tasks with their start and end dates:
+    prompt = f"""
+You are an expert project analyst. Analyze the following project schedule and provide a concise summary in markdown bullet points.
 
+**Project Data:**
 {df[['Task', 'Start Date', 'End Date', 'Duration (Days)']].to_string(index=False)}
 
-1. Identify any long tasks (duration > 10 days).
-2. Suggest how to optimize the schedule if possible.
-3. Summarize the overall timeline in 3-4 sentences."""
+**Instructions:**
+Please provide the following analysis in your summary:
+
+* **Overall Timeline:** State the project's start date, end date, and total duration.\n
+* **Key Milestones:** Identify the project's start and end tasks.\n
+* **Long-Duration Tasks:** List the top 3 tasks with the longest duration (anything over 20 days).\n
+* **Potential for Parallel Work:** Identify any phases or tasks that have significant overlap in their timelines, suggesting they are happening in parallel.\n
+* **High-Level Summary:** Provide a 2-sentence conclusion about the project's structure and length.\n
+"""
+
     haiku_summary = call_haiku(prompt)
 
     # --- Determine full date range ---
@@ -115,7 +124,7 @@ def generate_gantt_chart(excel_path, include_saturday=True, include_sunday=True)
 
     # --- Sheet 3: AI Summary ---
     summary_sheet = workbook.add_worksheet('AI Summary')
-    summary_sheet.write('A1', 'Project Analysis from Claude 3 Haiku:')
+    summary_sheet.write('A1', 'Project Analysis :')
     summary_sheet.write('A3', haiku_summary)
 
     writer.close()

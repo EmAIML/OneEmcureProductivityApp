@@ -17,12 +17,14 @@
     }
 
     .upload-box {
-      background: #FFFFFF; /* white */
+      background: #FFFFFF;
       border-radius: 12px;
       box-shadow: 0 6px 20px rgba(75, 46, 46, 0.15);
       width: 100%;
-      max-width: 800px; /* increased width */
+      max-width: 850px;
       transition: box-shadow 0.3s ease;
+      overflow-y: auto;
+      max-height: 95vh;
     }
 
     .upload-box:hover {
@@ -43,21 +45,17 @@
       margin: 0;
       font-size: 28px;
       font-weight: 700;
-      letter-spacing: 1px;
-      line-height: 1.1;
     }
 
     .header p {
       margin: 6px 0 0 0;
       font-size: 14px;
-      font-weight: 400;
       opacity: 0.85;
       font-style: italic;
-      letter-spacing: 0.5px;
     }
 
     .form-content {
-      padding: 15px 50px; /* slightly reduced padding */
+      padding: 20px 50px;
       text-align: center;
     }
 
@@ -73,6 +71,7 @@
       width: 100%;
       box-sizing: border-box;
     }
+
     input[type="file"]:focus {
       border-color: #5c1a00;
       outline: none;
@@ -92,17 +91,17 @@
       letter-spacing: 0.8px;
       transition: background-color 0.3s ease, box-shadow 0.3s ease;
     }
+
     input[type="submit"]:hover {
-      background-color: #5c1a00;
+      background-color: #7a2e2e;
       box-shadow: 0 4px 15px rgba(122, 67, 62, 0.5);
     }
 
     .footer {
-      margin-top: 10px; /* reduced from 20px */
+      margin-top: 10px;
       font-size: 13px;
       color: #b22222;
       font-style: italic;
-      user-select: none;
     }
 
     .radio-group {
@@ -115,7 +114,6 @@
     .radio-group p {
       font-weight: 600;
       margin-bottom: 6px;
-      color: #b22222;
     }
 
     .radio-group label {
@@ -131,8 +129,35 @@
       transform: scale(1.1);
     }
 
+    .example-section {
+      background: #fff5ee;
+      border: 1px solid #f5c6aa;
+      border-radius: 10px;
+      padding: 15px;
+      margin-top: 25px;
+      text-align: left;
+    }
+
+    .example-section h3 {
+      color: #5c1a00;
+      margin-bottom: 10px;
+      font-size: 18px;
+    }
+
+    .example-section p {
+      font-size: 14px;
+      color: #4b2e2e;
+      margin-bottom: 10px;
+    }
+
+    .example-section img {
+      width: 100%;
+      border-radius: 8px;
+      border: 1px solid #e0b79c;
+    }
+
     .back-dashboard {
-      margin-top: 8px; /* small margin to reduce gap */
+      margin-top: 8px;
       font-size: 14px;
       color: #5c1a00;
       font-weight: 600;
@@ -150,7 +175,7 @@
   </style>
 </head>
 <body>
-  <div class="upload-box" role="main" aria-label="Excel file upload for Gantt chart generator">
+  <div class="upload-box">
 
     <div class="header">
       <h1>Upload Excel File</h1>
@@ -159,24 +184,36 @@
 
     <div class="form-content">
       <form method="POST" enctype="multipart/form-data">
-        <input type="file" name="file" accept=".xlsx,.xls" required aria-required="true" aria-label="Excel file input">
+        <input type="file" name="file" accept=".xlsx,.xls" required>
 
-        <div class="radio-group" role="group" aria-labelledby="saturday-label">
-          <p id="saturday-label"><strong>Include Saturdays in project plan?</strong></p>
+        <div class="radio-group">
+          <p><strong>Include Saturdays in project plan?</strong></p>
           <label><input type="radio" name="include_saturday" value="yes" checked> Yes</label>
           <label><input type="radio" name="include_saturday" value="no"> No</label>
         </div>
 
-        <div class="radio-group" role="group" aria-labelledby="sunday-label">
-          <p id="sunday-label"><strong>Include Sundays in project plan?</strong></p>
+        <div class="radio-group">
+          <p><strong>Include Sundays in project plan?</strong></p>
           <label><input type="radio" name="include_sunday" value="yes" checked> Yes</label>
           <label><input type="radio" name="include_sunday" value="no"> No</label>
         </div>
 
-        <input type="submit" value="Generate Gantt Chart" aria-label="Generate Gantt Chart button">
+        <input type="submit" value="Generate Gantt Chart">
       </form>
 
-      <div class="footer" aria-live="polite">
+      <div class="example-section">
+        <h3>📘 Excel Sheet Format Example</h3>
+        <p>Please make sure your Excel sheet includes these 3 columns exactly as shown below:</p>
+        <ul>
+          <li><strong>Task</strong> – Name of the activity (e.g., “Task Name”)</li>
+          <li><strong>Start Date</strong> – When the task starts (e.g., “2025-11-01”)</li>
+          <li><strong>End Date</strong> – When the task ends (e.g., “2025-11-05”)</li>
+        </ul>
+        <p>Here’s an example of a properly formatted Excel file:</p>
+        <img src="{{ url_for('static', filename='images/example_excel.png') }}" alt="Example Excel Sheet Format">
+      </div>
+
+      <div class="footer">
         <p>Supported format: .xlsx or .xls</p>
       </div>
 
