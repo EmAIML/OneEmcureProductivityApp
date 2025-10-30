@@ -27,9 +27,9 @@ FLOWCHART_DIR = "flowcharts"
 app.secret_key = os.urandom(24)
  
 # Azure App Details
-CLIENT_ID = 'cfa5c66e-bed1-4e03-a8b1-eb527942680c'
-CLIENT_SECRET = ' Wdl8Q~Zu~V3~6F5_3RdC0ydgae3Ps7I0B6iW2aof'
-TENANT_ID = '5c1f1620-2fa8-46e0-b7f6-be5a8531bf36'
+CLIENT_ID = 'client_id_here'
+CLIENT_SECRET = ' YOUR_SECRET_HERE'
+TENANT_ID = 'tenant_id'
 AUTHORITY = f'https://login.microsoftonline.com/{TENANT_ID}'
 SCOPE = ['User.Read']
  
