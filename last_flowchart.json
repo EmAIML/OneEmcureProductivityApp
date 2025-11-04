@@ -1,0 +1,71 @@
+{
+  "nodes": [
+    {
+      "id": "start",
+      "type": "start",
+      "label": "Start"
+    },
+    {
+      "id": "get_water",
+      "type": "process",
+      "label": "Get water"
+    },
+    {
+      "id": "boil_water",
+      "type": "process",
+      "label": "Boil water"
+    },
+    {
+      "id": "add_tea_bag",
+      "type": "process",
+      "label": "Add tea bag"
+    },
+    {
+      "id": "steep_tea",
+      "type": "process",
+      "label": "Steep tea"
+    },
+    {
+      "id": "add_milk_sugar",
+      "type": "process",
+      "label": "Add milk and sugar"
+    },
+    {
+      "id": "end",
+      "type": "end",
+      "label": "End"
+    }
+  ],
+  "edges": [
+    {
+      "source": "start",
+      "target": "get_water",
+      "label": ""
+    },
+    {
+      "source": "get_water",
+      "target": "boil_water",
+      "label": ""
+    },
+    {
+      "source": "boil_water",
+      "target": "add_tea_bag",
+      "label": ""
+    },
+    {
+      "source": "add_tea_bag",
+      "target": "steep_tea",
+      "label": ""
+    },
+    {
+      "source": "steep_tea",
+      "target": "add_milk_sugar",
+      "label": ""
+    },
+    {
+      "source": "add_milk_sugar",
+      "target": "end",
+      "label": ""
+    }
+  ]
+}
