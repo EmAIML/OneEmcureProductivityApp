@@ -140,6 +140,19 @@
         background-color: #7a3e1a;
     }
 
+    .back-link {
+        display: inline-block;
+        margin-top: 30px;
+        padding: 12px 25px;
+        background: linear-gradient(135deg, #8B4513, #5C3317);
+        color: white;
+        text-decoration: none;
+        border-radius: 50px;
+        font-weight: 600;
+        box-shadow: 0 6px 16px rgba(139, 69, 19, 0.3); 
+        transition: background 0.3s ease, transform 0.2s ease;
+    }
+
     /* ===== Responsive ===== */
     @media (max-width: 768px) {
         .container {
@@ -195,6 +208,8 @@
         {% endif %}
     </div>
     {% endif %}
+
+    <p class="back-dashboard"><a href="{{ url_for('home') }}">← Back to Dashboard</a></p>
 </div>
 
 <script>

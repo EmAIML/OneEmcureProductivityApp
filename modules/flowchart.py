@@ -123,8 +123,6 @@ def generate_flowchart(data, filename_base):
         print(f"Error rendering flowchart with Graphviz: {e}")
         return None
 
-
-
 def load_last_flowchart():
     if os.path.exists(HISTORY_FILE):
         with open(HISTORY_FILE, "r") as f:
@@ -136,7 +134,7 @@ def save_flowchart_history(data):
         json.dump(data, f, indent=2)
 
 def save_flowchart_permanently(data, filename_base):
-    # Save JSON to permanent storage
+    # Save JSON to permanent storage 
     json_path = f"{filename_base}.json"
     with open(json_path, "w") as f:
         json.dump(data, f, indent=2)

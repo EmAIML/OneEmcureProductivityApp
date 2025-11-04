@@ -144,3 +144,4 @@ else
     echo "Nginx configuration test failed. Please check the configuration."
     exit 1
 fi
+
