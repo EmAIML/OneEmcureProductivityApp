@@ -89,3 +89,4 @@ sudo systemctl status productivity-app.service
 - Nginx error logs: `/var/log/nginx/productivity.oneemcure.ai.error.log`
 - Flask app logs: `sudo journalctl -u productivity-app.service -f`
 
+
