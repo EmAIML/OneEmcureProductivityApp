@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, send_from_directory, send_file, redirect, url_for, jsonify, session
 from authlib.integrations.flask_client import OAuth 
 import os
+import secrets
 import boto3
 import json  
 from datetime import datetime  
@@ -44,7 +45,7 @@ app.config['MICROSOFT_TENANT'] = '5c1f1620-2fa8-46e0-b7f6-be5a8531bf36'
 app.config['MICROSOFT_AUTHORITY'] = f"https://login.microsoftonline.com/{app.config['MICROSOFT_TENANT']}"
 app.config['MICROSOFT_METADATA_URL'] = f"{app.config['MICROSOFT_AUTHORITY']}/v2.0/.well-known/openid-configuration"
 
-# ✅ This must match EXACTLY your Azure Redirect URI
+#  This must match EXACTLY your Azure Redirect URI
 app.config['MICROSOFT_REDIRECT_URI'] = 'https://productivity.oneemcure.ai'
 
 # Register Microsoft OAuth client
@@ -58,11 +59,15 @@ microsoft = oauth.register(
 
 # Root route — also serves as login callback
 @app.route('/')
-def root():
-    # If user is returning from Microsoft with a code parameter
+def login():
+    # Microsoft will redirect back to this route after login
     if 'code' in request.args:
         token = microsoft.authorize_access_token()
-        user_info = microsoft.parse_id_token(token)
+
+        #  Pass the nonce used during authorization
+        nonce = session.pop('nonce', None)
+        user_info = microsoft.parse_id_token(token, nonce=nonce)
+
         if user_info:
             session['user'] = user_info
             print("User logged in:", user_info)
@@ -72,13 +77,17 @@ def root():
     # Otherwise show login page
     return render_template('login.html')
 
-# Explicit login trigger
+
 @app.route('/login')
 def login_route():
-    redirect_uri = app.config['MICROSOFT_REDIRECT_URI']
-    return microsoft.authorize_redirect(redirect_uri)
+    # Generate and store nonce for ID token validation
+    nonce = secrets.token_urlsafe(16)
+    session['nonce'] = nonce
 
-# Dashboard
+    redirect_uri = app.config['MICROSOFT_REDIRECT_URI']
+    return microsoft.authorize_redirect(redirect_uri, nonce=nonce)
+
+
 @app.route('/home')
 def home():
     if "user" not in session:
@@ -87,9 +96,10 @@ def home():
     user = session["user"]
     name = user.get("name", "User")
     email = user.get("preferred_username", user.get("email", ""))
+
     return render_template('index.html', name=name, email=email)
 
-# Logout
+
 @app.route('/logout')
 def logout():
     session.pop('user', None)
