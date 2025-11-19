@@ -10,17 +10,24 @@ from docx import Document
 
 # === SETTINGS ===
 OUTPUT_FILE = "generated_result.txt"
+REGION = "ap-south-1"
+MODEL_ID = "anthropic.claude-3-haiku-20240307-v1:0"
 
-# === UTILITY FUNCTIONS ===
+# === INITIALIZE BEDROCK CLIENT ===
+def get_bedrock_client():
+    session = boto3.session.Session()
+    return session.client("bedrock-runtime", region_name=REGION)
 
+# === UTILITIES ===
 def pdf_to_images(pdf_path):
     print("Converting PDF pages to images...")
-    return convert_from_path(pdf_path, dpi=300)
+    return convert_from_path(pdf_path, dpi=200)
 
 def extract_text_from_image(image_path, max_retries=5):
     print(f"Extracting text from image: {image_path}")
-    client = boto3.client("bedrock-runtime", region_name="ap-south-1")
+    client = get_bedrock_client()
 
+    # Resize large images to avoid 413 error
     image = Image.open(image_path)
     max_width = 1024
     if image.width > max_width:
@@ -34,226 +41,240 @@ def extract_text_from_image(image_path, max_retries=5):
     base64_image = base64.b64encode(image_bytes).decode("utf-8")
 
     prompt_text = (
-        "Extract only the relevant and meaningful content (not title, headers, or footers) "
-        "from this image. Do not summarize. Just output the plain clean text."
+        "Extract all readable and meaningful text from this image. "
+        "Do not summarize; return plain text only. Ignore titles, page numbers, and headers."
     )
 
     payload = {
         "anthropic_version": "bedrock-2023-05-31",
-        "messages": [
-            {
-                "role": "user",
-                "content": [
-                    {"type": "image", "source": {"type": "base64", "media_type": "image/png", "data": base64_image}},
-                    {"type": "text", "text": prompt_text},
-                ],
-            }
-        ],
-        "max_tokens": 8000,
+        "messages": [{
+            "role": "user",
+            "content": [
+                {"type": "image", "source": {"type": "base64", "media_type": "image/png", "data": base64_image}},
+                {"type": "text", "text": prompt_text}
+            ]
+        }],
+        "max_tokens": 8000
     }
 
     retries = 0
     while retries < max_retries:
         try:
             response = client.invoke_model(
-                modelId="anthropic.claude-3-haiku-20240307-v1:0",
+                modelId=MODEL_ID,
                 contentType="application/json",
                 accept="application/json",
                 body=json.dumps(payload).encode("utf-8"),
             )
-
             result_json = json.loads(response["body"].read().decode("utf-8"))
-            clean_text = ""
-            for item in result_json.get("content", []):
-                if item["type"] == "text":
-                    clean_text += item["text"]
+            final_text = "".join(
+                [c["text"] for c in result_json.get("content", []) if c["type"] == "text"]
+            ).strip()
 
-            return clean_text.strip()
+            if not final_text.strip():
+                print("⚠ OCR returned empty text.")
+
+            return final_text
 
         except ClientError as e:
             if e.response["Error"]["Code"] == "ThrottlingException":
-                wait_time = 2 ** retries
-                print(f"⚠️ Throttled. Waiting {wait_time}s before retrying... (Attempt {retries + 1})")
-                time.sleep(wait_time)
+                wait = 2 ** retries
+                print(f"Throttled. Retrying in {wait}s...")
+                time.sleep(wait)
                 retries += 1
             else:
                 raise
         except Exception as e:
             print(f"Unexpected error: {e}")
-            raise
+            retries += 1
+            time.sleep(2)
 
-    raise Exception("Max retries reached. Giving up.")
+    raise Exception("Max retries reached. Image text extraction failed.")
 
 def extract_text_and_images_from_docx(docx_path):
     print(f"Extracting text and images from Word file: {docx_path}")
     doc = Document(docx_path)
     full_text = ""
 
-    # Extract paragraph text
+    # Extract paragraphs
     for para in doc.paragraphs:
         if para.text.strip():
             full_text += para.text + "\n"
 
-    # Extract embedded images safely
-    image_counter = 1
+    # Extract images
+    img_count = 1
     for rel in doc.part._rels.values():
         if "image" in rel.reltype and getattr(rel, "target_part", None):
-            image_bytes = rel.target_part.blob
-            image_path = f"docx_image_{image_counter}.png"
-            with open(image_path, "wb") as f:
-                f.write(image_bytes)
-            print(f"Extracting text from embedded image: {image_path}")
+            img_bytes = rel.target_part.blob
+            img_path = f"docx_image_{img_count}.png"
+            with open(img_path, "wb") as f:
+                f.write(img_bytes)
 
             try:
-                image_text = extract_text_from_image(image_path)
-                full_text += f"\n\n--- Image {image_counter} ---\n{image_text}"
-                image_counter += 1
+                img_text = extract_text_from_image(img_path)
+                if img_text.strip():
+                    full_text += f"\n\n--- Image {img_count} ---\n{img_text}"
+                else:
+                    print(f"⚠ No OCR text extracted from image {img_count}")
+
             except Exception as e:
-                print(f"Error extracting text from image {image_path}: {e}")
+                print(f"Error extracting text from image: {e}")
+
             finally:
-                os.remove(image_path)
+                os.remove(img_path)
+
+            img_count += 1
+
+    if not full_text.strip():
+        print("⚠ DOCX contains no readable text or images.")
 
     return full_text
 
-def generate_summary_from_text(text, word_limit=100, max_retries=5):
-    print(f"Generating summary (limit {word_limit} words)...")
-    prompt_text = f"Summarize the following text in at most {word_limit} words. Focus on the main content and keep it concise:\n\n{text}"
+def chunk_text(text, max_length=12000):
+    return [text[i:i+max_length] for i in range(0, len(text), max_length)]
 
-    client = boto3.client("bedrock-runtime", region_name="ap-south-1")
-    payload = {
-        "anthropic_version": "bedrock-2023-05-31",
-        "messages": [{"role": "user", "content": [{"type": "text", "text": prompt_text}]}],
-        "max_tokens": 3000,
-    }
+def generate_summary_from_text(text):
+    print("Generating intelligent summary...")
+    client = get_bedrock_client()
 
-    retries = 0
-    while retries < max_retries:
-        try:
-            response = client.invoke_model(
-                modelId="anthropic.claude-3-haiku-20240307-v1:0",
-                contentType="application/json",
-                accept="application/json",
-                body=json.dumps(payload).encode("utf-8"),
-            )
+    text_chunks = chunk_text(text)
+    combined_summary = ""
 
-            result_json = json.loads(response["body"].read().decode("utf-8"))
-            summary = ""
-            for item in result_json.get("content", []):
-                if item["type"] == "text":
-                    summary += item["text"]
+    for idx, chunk in enumerate(text_chunks, 1):
+        print(f"Processing summary chunk {idx}/{len(text_chunks)}...")
+        prompt = (
+            "You are an expert summarizer. Write a detailed summary of the text below "
+            "while preserving all important facts and context. No meta info.\n\nText:\n" + chunk
+        )
 
-            return summary.strip()
+        payload = {
+            "anthropic_version": "bedrock-2023-05-31",
+            "messages": [{"role": "user", "content": [{"type": "text", "text": prompt}]}],
+            "max_tokens": 8000,
+        }
 
-        except ClientError as e:
-            if e.response["Error"]["Code"] == "ThrottlingException":
-                wait_time = 2 ** retries
-                print(f"⚠️ Throttled. Waiting {wait_time}s before retrying... (Attempt {retries + 1})")
-                time.sleep(wait_time)
+        retries = 0
+        while retries < 5:
+            try:
+                response = client.invoke_model(
+                    modelId=MODEL_ID,
+                    contentType="application/json",
+                    accept="application/json",
+                    body=json.dumps(payload).encode("utf-8"),
+                )
+                result_json = json.loads(response["body"].read().decode("utf-8"))
+                summary_chunk = "".join(
+                    [c["text"] for c in result_json.get("content", []) if c["type"] == "text"]
+                )
+                combined_summary += summary_chunk.strip() + "\n\n"
+                break
+            except Exception as e:
+                print(f"Retrying summary chunk {idx} due to error: {e}")
+                time.sleep(2 ** retries)
                 retries += 1
-            else:
-                raise
-        except Exception as e:
-            print(f"Unexpected error while generating summary: {e}")
-            raise
 
-    raise Exception("Max retries reached while generating summary.")
+    return combined_summary.strip()
 
-def generate_mcqs_from_text(text, max_retries=5):
-    print("Generating MCQs from extracted text...")
-    prompt_text = (
-        "Based only on the following text, generate exactly 40 high-quality, fact-based multiple choice questions.\n\n"
-        "Use this strict format:\n"
-        "Q1. <Question>\n"
-        "A. <Option A>\n"
-        "B. <Option B>\n"
-        "C. <Option C>\n"
-        "D. <Option D>\n"
-        "Correct Answer: <A/B/C/D>\n"
-        "Explanation: <Short explanation>\n\n"
-        "Rules:\n"
-        "- Do NOT make up any information not present in the text.\n"
-        "- Only generate questions that are clearly answerable from the content.\n"
-        "- Ensure no duplicate or overly similar questions.\n"
-        "- All questions must be factual.\n"
-        "- Only one correct option per question.\n"
-    )
+def generate_mcqs_from_text(text):
+    print("Generating MCQs...")
+    client = get_bedrock_client()
+    text_chunks = chunk_text(text, max_length=10000)
+    all_mcqs = ""
 
-    client = boto3.client("bedrock-runtime", region_name="ap-south-1")
-    payload = {
-        "anthropic_version": "bedrock-2023-05-31",
-        "messages": [{"role": "user", "content": [{"type": "text", "text": prompt_text + "\n\nText Content:\n" + text}]}],
-        "max_tokens": 8000,
-    }
+    for idx, chunk in enumerate(text_chunks, 1):
+        print(f"Processing MCQ chunk {idx}/{len(text_chunks)}...")
+        prompt = (
+            "From the text below, generate 40 MCQs in this format:\n\n"
+            "Q1. <Question>\nA. <Option A>\nB. <Option B>\nC. <Option C>\nD. <Option D>\n"
+            "Correct Answer: <A/B/C/D>\nExplanation: <Short explanation>\n\n"
+            "Rules:\n- Use only information from the text.\n- No duplicates.\n\n"
+            "Text:\n" + chunk
+        )
 
-    retries = 0
-    while retries < max_retries:
-        try:
-            response = client.invoke_model(
-                modelId="anthropic.claude-3-haiku-20240307-v1:0",
-                contentType="application/json",
-                accept="application/json",
-                body=json.dumps(payload).encode("utf-8"),
-            )
+        payload = {
+            "anthropic_version": "bedrock-2023-05-31",
+            "messages": [{"role": "user", "content": [{"type": "text", "text": prompt}]}],
+            "max_tokens": 8000,
+        }
 
-            result_json = json.loads(response["body"].read().decode("utf-8"))
-            mcqs = ""
-            for item in result_json.get("content", []):
-                if item["type"] == "text":
-                    mcqs += item["text"]
-
-            return mcqs.strip()
-
-        except ClientError as e:
-            if e.response["Error"]["Code"] == "ThrottlingException":
-                wait_time = 2 ** retries
-                print(f"⚠️ Throttled. Waiting {wait_time}s before retrying... (Attempt {retries + 1})")
-                time.sleep(wait_time)
+        retries = 0
+        while retries < 5:
+            try:
+                response = client.invoke_model(
+                    modelId=MODEL_ID,
+                    contentType="application/json",
+                    accept="application/json",
+                    body=json.dumps(payload).encode("utf-8"),
+                )
+                result_json = json.loads(response["body"].read().decode("utf-8"))
+                mcqs = "".join(
+                    [c["text"] for c in result_json.get("content", []) if c["type"] == "text"]
+                )
+                all_mcqs += mcqs.strip() + "\n\n"
+                break
+            except Exception as e:
+                print(f"Retrying MCQ chunk {idx} due to error: {e}")
+                time.sleep(2 ** retries)
                 retries += 1
-            else:
-                raise
-        except Exception as e:
-            print(f"Unexpected error while generating MCQs: {e}")
-            raise
 
-    raise Exception("Max retries reached while generating MCQs.")
+    return all_mcqs.strip()
 
-def process_document(input_path, operation="summary", word_limit=100, pages_to_skip=[]):
+def process_document(input_path, operation="summary", pages_to_skip=None):
+    if pages_to_skip is None:
+        pages_to_skip = []
+
     ext = os.path.splitext(input_path)[1].lower()
+    word_extensions = [
+    ".doc", ".docx", ".dot", ".dotx", ".docm", ".dotm",
+    ".xml", ".rtf", ".txt"
+    ]
+
+    if ext not in [".pdf"] + word_extensions:
+        return {"error": "Unsupported file format! Only PDF and Word documents are allowed."}
+
+
+
     combined_text = ""
 
     if ext == ".pdf":
         images = pdf_to_images(input_path)
         for i, image in enumerate(images):
-            page_number = i + 1
-            if page_number in pages_to_skip:
-                print(f"Skipping Page {page_number}")
+            page_num = i + 1
+            if page_num in pages_to_skip:
+                print(f"Skipping Page {page_num}")
                 continue
 
-            image_path = f"page_{page_number}.png"
-            image.save(image_path)
+            img_path = f"page_{page_num}.png"
+            image.save(img_path)
 
             try:
-                page_text = extract_text_from_image(image_path)
-                combined_text += f"\n\n--- Page {page_number} ---\n{page_text}"
-                print(f"Text extracted from Page {page_number}")
-                time.sleep(1)
-            except Exception as e:
-                print(f"Error on page {page_number}: {e}")
+                page_text = extract_text_from_image(img_path)
+                if not page_text.strip():
+                    print(f"⚠ OCR returned empty for Page {page_num}")
+                combined_text += f"\n\n--- Page {page_num} ---\n{page_text}"
 
-            os.remove(image_path)
+            except Exception as e:
+                print(f"Error extracting from page {page_num}: {e}")
+
+            finally:
+                os.remove(img_path)
 
     elif ext == ".docx":
         combined_text = extract_text_and_images_from_docx(input_path)
 
-    else:
-        raise Exception("Unsupported file type. Please provide PDF or Word (.docx).")
-
+    # === SAFETY CHECK ===
     if not combined_text.strip():
-        raise Exception("No content extracted from document.")
+        print("\n=== DEBUG: No text extracted ===")
+        print("Possible reasons:")
+        print("1. PDF is scanned & OCR failed")
+        print("2. DOCX contains only images but OCR failed")
+        print("3. Poppler missing on system (install required)")
+        print("4. Images generated were empty or corrupted\n")
+        raise Exception("No content extracted from document. Please verify your file or OCR setup.")
 
     if operation == "summary":
-        return generate_summary_from_text(combined_text, word_limit=word_limit)
+        return generate_summary_from_text(combined_text)
     elif operation == "questions":
         return generate_mcqs_from_text(combined_text)
     else:
-        raise Exception("Invalid operation selected. Choose 'summary' or 'questions'.")
+        raise ValueError("Invalid operation. Choose 'summary' or 'questions'.")

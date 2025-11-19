@@ -1,20 +1,17 @@
+# modules/ganttchart.py
 import pandas as pd
-import matplotlib.pyplot as plt
 import os
 from datetime import datetime
-import boto3
 import json
-import tempfile
+from difflib import SequenceMatcher
+from dateutil import parser
+import boto3
 
-
+# keep your call_haiku function (unchanged)
 def call_haiku(prompt):
-    """
-    Calls AWS Bedrock's Claude 3 Haiku model with the given prompt using Messages API.
-    Returns the model's completion.
-    """
     bedrock = boto3.client(
         service_name='bedrock-runtime',
-        region_name='ap-south-1' 
+        region_name='ap-south-1'
     )
 
     body = json.dumps({
@@ -37,96 +34,215 @@ def call_haiku(prompt):
     return response_body['content'][0]['text'].strip()
 
 
+def fuzzy_find_column(df_columns, expected_names):
+    """
+    Try to match any column name to an expected_names list using:
+      - exact / partial contains
+      - fuzzy similarity fallback
+    """
+    df_cols = [c.lower().strip() for c in df_columns]
+
+    # first pass: contains
+    for expected in expected_names:
+        expected_low = expected.lower()
+        for idx, col in enumerate(df_cols):
+            if expected_low in col:
+                return df_columns[idx]
+
+    # second pass: fuzzy similarity
+    best_match = None
+    best_ratio = 0.0
+    for expected in expected_names:
+        for idx, col in enumerate(df_cols):
+            ratio = SequenceMatcher(None, expected.lower(), col).ratio()
+            if ratio > best_ratio:
+                best_ratio = ratio
+                best_match = idx
+
+    if best_ratio >= 0.45:
+        return df_columns[best_match]
+    return None
+
+
+def smart_date_parse(value):
+    """Parses nearly ANY date format including Excel serials."""
+    if pd.isna(value):
+        return pd.NaT
+    
+    # Excel serial number (float/int)
+    if isinstance(value, (int, float)):
+        try:
+            return pd.Timestamp('1899-12-30') + pd.to_timedelta(int(value), unit='D')
+        except:
+            pass
+
+    s = str(value).strip()
+    if s == "":
+        return pd.NaT
+
+    # try multiple formats
+    formats = [
+        "%Y-%m-%d", "%d-%m-%Y", "%m-%d-%Y",
+        "%d/%m/%Y", "%m/%d/%Y", "%Y/%m/%d",
+        "%d.%m.%Y", "%Y.%m.%d",
+        "%d %b %Y", "%d %B %Y", "%b %d %Y", "%B %d %Y",
+        "%Y%m%d", "%d%m%Y"
+    ]
+
+    for fmt in formats:
+        try:
+            return datetime.strptime(s, fmt)
+        except:
+            continue
+
+    # final fallback → dateutil
+    try:
+        return parser.parse(s, dayfirst=False)
+    except:
+        try:
+            return parser.parse(s, dayfirst=True)
+        except:
+            return pd.NaT
+
+
+
 def generate_gantt_chart(excel_path, include_saturday=True, include_sunday=True):
-    # your existing code with date filtering logic based on these two params
-
     """
-    Reads Excel, generates a Gantt chart in Excel using colored cells (not image),
-    and adds Claude 3 Haiku AI analysis.
+    Reads excel_path, detects Task/Start/End columns flexibly, parses dates,
+    writes a Gantt excel and returns (output_excel_path, meta_dict).
+    meta_dict contains keys: open_tasks (list), project_start, project_end
     """
-
-    # Read Excel
-
+    # read
     df = pd.read_excel(excel_path, engine='openpyxl')
-    # Validate columns
-    required_columns = ['Task', 'Start Date', 'End Date']
-    if not all(col in df.columns for col in required_columns):
-        raise ValueError(f"Excel must contain the columns: {', '.join(required_columns)}")
 
-    # Clean and parse dates
-    df['Start Date'] = pd.to_datetime(df['Start Date'])
-    df['End Date'] = pd.to_datetime(df['End Date'])
+    # detect columns
+    task_col = fuzzy_find_column(df.columns, [
+    "task","activity","activities","work","job","item","milestone","phase","title","task name","activity name",
+    "description","summary"
+    ])
 
-    # Add duration (including both start and end)
-    df['Duration (Days)'] = (df['End Date'] - df['Start Date']).dt.days + 1
+    start_col = fuzzy_find_column(df.columns, [
+    "start","start date","begin","from","launch","kickoff","starting","startday","planned start",
+    "date start","begins","starting date"
+    ])
 
-    # --- Claude AI Summary ---
+    end_col = fuzzy_find_column(df.columns, [
+    "end","end date","finish","to","deadline","completion","close","closing","planned end",
+    "enddate","finish date","ending","ending date"
+     ])
+
+    if not task_col or not start_col or not end_col:
+        # helpful: list detected columns and reason
+        raise ValueError(f"Could not detect Task/Start/End columns. Found columns: {list(df.columns)}")
+
+    # rename for consistency
+    df = df.rename(columns={task_col: "Task", start_col: "Start Date", end_col: "End Date"})
+
+    # parse dates robustly
+    df["Start Date"] = df["Start Date"].apply(smart_date_parse)
+    df["End Date"] = df["End Date"].apply(smart_date_parse)
+
+    # find tasks with missing start or end
+    missing_start = df[df["Start Date"].isna()]["Task"].tolist()
+    missing_end = df[df["End Date"].isna()]["Task"].tolist()
+
+    # If Start Date missing, raise — can't plot
+    if len(missing_start) > 0:
+        raise ValueError(f"The following tasks have missing/invalid Start Dates: {missing_start}")
+
+    # For tasks with missing End Date, treat as open-ended: set to today for plotting
+    today = pd.Timestamp.today().normalize()
+    df.loc[df["End Date"].isna(), "End Date"] = today
+
+    # Duration (days, inclusive)
+    df["Duration (Days)"] = (df["End Date"] - df["Start Date"]).dt.days + 1
+
+    # Prepare AI prompt (include weekend handling & open tasks)
+    weekend_msg = []
+    if not include_saturday:
+        weekend_msg.append("Saturdays excluded")
+    if not include_sunday:
+        weekend_msg.append("Sundays excluded")
+    weekend_info = ", ".join(weekend_msg) if weekend_msg else "All days included"
+
+    open_tasks_msg = "No open-ended tasks."
+    if missing_end:
+        open_tasks_msg = "Open-ended tasks (no End Date provided): " + ", ".join(map(str, missing_end))
+
     prompt = f"""
-You are an expert project analyst. Analyze the following project schedule and provide a concise summary in markdown bullet points.
+      You are an expert project analyst. Analyze the project schedule below and generate a clear, structured summary.
 
-**Project Data:**
-{df[['Task', 'Start Date', 'End Date', 'Duration (Days)']].to_string(index=False)}
+      Weekend rules applied:
+      - Saturdays included: {include_saturday}
+      - Sundays included: {include_sunday}
 
-**Instructions:**
-Please provide the following analysis in your summary:
+      Additional logic notes:
+      {weekend_info}
+      {open_tasks_msg}
 
-* **Overall Timeline:** State the project's start date, end date, and total duration.\n
-* **Key Milestones:** Identify the project's start and end tasks.\n
-* **Long-Duration Tasks:** List the top 3 tasks with the longest duration (anything over 20 days).\n
-* **Potential for Parallel Work:** Identify any phases or tasks that have significant overlap in their timelines, suggesting they are happening in parallel.\n
-* **High-Level Summary:** Provide a 2-sentence conclusion about the project's structure and length.\n
-"""
+      Project Data:
+      {df[['Task','Start Date','End Date','Duration (Days)']].to_string(index=False)}
 
-    haiku_summary = call_haiku(prompt)
+      Please provide:
+      1. Overall project timeline (start date, end date, total duration).
+      2. Whether weekends were counted or excluded in calculations (mention Saturday/Sunday rules clearly).
+      3. Key milestones (earliest starting task and latest ending task).
+      4. Top 3 longest tasks (if duration > 10 days).
+      5. List of overlapping/parallel tasks with short explanation.
+      6. A concise 2–3 sentence final conclusion summarizing project pace and workload distribution.
+    """
 
-    # --- Determine full date range ---
-    all_dates = pd.date_range(df['Start Date'].min(), df['End Date'].max())
+    try:
+        haiku_summary = call_haiku(prompt)
+    except Exception as e:
+        # don't fail entire processing if AI call fails — provide fallback text
+        haiku_summary = f"(AI summary failed: {e})"
 
-    # Remove Saturdays or Sundays if not included
-    if not include_saturday and not include_sunday:
-        all_dates = all_dates[~all_dates.weekday.isin([5, 6])]
-    elif not include_saturday:
-        all_dates = all_dates[~all_dates.weekday.isin([5])]
-    elif not include_sunday:
-        all_dates = all_dates[~all_dates.weekday.isin([6])]
-    # else: include both days, do nothing
+    # date range
+    all_dates = pd.date_range(df["Start Date"].min(), df["End Date"].max())
+    if not include_saturday:
+        all_dates = all_dates[all_dates.weekday != 5]
+    if not include_sunday:
+        all_dates = all_dates[all_dates.weekday != 6]
 
-    # --- Prepare Excel Writer ---
-    output_excel = os.path.splitext(excel_path)[0] + '_gantt_output.xlsx'
-    writer = pd.ExcelWriter(output_excel, engine='xlsxwriter')
+    # create output excel path
+    base = os.path.splitext(excel_path)[0]
+    output_excel = f"{base}_gantt_output.xlsx"
+
+    # write excel
+    writer = pd.ExcelWriter(output_excel, engine="xlsxwriter", datetime_format='yyyy-mm-dd')
+    df.to_excel(writer, index=False, sheet_name="Task List")
+
     workbook = writer.book
+    gantt_sheet = workbook.add_worksheet("Gantt Chart")
+    # header row
+    gantt_sheet.write(0, 0, "Task")
+    for i, d in enumerate(all_dates):
+        gantt_sheet.write(0, i + 1, d.strftime("%Y-%m-%d"))
 
-    # --- Sheet 1: Task List ---
-    df.to_excel(writer, index=False, sheet_name='Task List')
+    fill_fmt = workbook.add_format({"bg_color": "#4F81BD"})
+    # write rows
+    for r, row in df.iterrows():
+        gantt_sheet.write(r + 1, 0, row["Task"])
+        for c, d in enumerate(all_dates):
+            if row["Start Date"] <= d <= row["End Date"]:
+                gantt_sheet.write(r + 1, c + 1, "", fill_fmt)
 
-    # --- Sheet 2: Gantt Chart ---
-    gantt_sheet = workbook.add_worksheet('Gantt Chart')
-
-    # Write headers (dates)
-    gantt_sheet.write(0, 0, 'Task')
-    for idx, date in enumerate(all_dates):
-        gantt_sheet.write(0, idx + 1, date.strftime('%Y-%m-%d'))
-
-    # Define fill color for task durations
-    fill_format = workbook.add_format({'bg_color': '#4F81BD'})
-
-    # Fill Gantt chart rows
-    for row_idx, task in df.iterrows():
-        gantt_sheet.write(row_idx + 1, 0, task['Task'])
-
-        for col_idx, date in enumerate(all_dates):
-            if task['Start Date'] <= date <= task['End Date']:
-                gantt_sheet.write(row_idx + 1, col_idx + 1, '', fill_format)
-
-    # Adjust column widths
-    gantt_sheet.set_column(0, 0, 25)
+    gantt_sheet.set_column(0, 0, 30)
     gantt_sheet.set_column(1, len(all_dates), 12)
 
-    # --- Sheet 3: AI Summary ---
-    summary_sheet = workbook.add_worksheet('AI Summary')
-    summary_sheet.write('A1', 'Project Analysis :')
-    summary_sheet.write('A3', haiku_summary)
+    # AI summary sheet
+    summary_sheet = workbook.add_worksheet("AI Summary")
+    summary_sheet.write("A1", "Project Analysis:")
+    summary_sheet.write("A3", haiku_summary)
 
     writer.close()
-    return output_excel
 
+    meta = {
+        "open_tasks": missing_end,
+        "project_start": df["Start Date"].min(),
+        "project_end": df["End Date"].max(),
+        "ai_summary": haiku_summary
+    }
+
+    return output_excel, meta

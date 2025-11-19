@@ -6,12 +6,12 @@
   <style>
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background:  #fff8dc; /* light yellow */
-      color: #4B2E2E; /* dark red-brown */
+      background: #fff8dc;
+      color: #4B2E2E;
       display: flex;
       justify-content: center;
       align-items: center;
-      height: 100vh;
+      min-height: 100vh;
       margin: 0;
       padding: 20px;
     }
@@ -21,14 +21,11 @@
       border-radius: 12px;
       box-shadow: 0 6px 20px rgba(75, 46, 46, 0.15);
       width: 100%;
-      max-width: 850px;
+      max-width: 900px;
       transition: box-shadow 0.3s ease;
       overflow-y: auto;
       max-height: 95vh;
-    }
-
-    .upload-box:hover {
-      box-shadow: 0 10px 30px rgba(75, 46, 46, 0.3);
+      padding-bottom: 20px;
     }
 
     .header {
@@ -38,187 +35,249 @@
       border-top-right-radius: 12px;
       color: #FFF5F0;
       text-align: center;
-      box-shadow: inset 0 -3px 5px rgba(0,0,0,0.1);
     }
 
-    .header h1 {
-      margin: 0;
-      font-size: 28px;
-      font-weight: 700;
-    }
-
-    .header p {
-      margin: 6px 0 0 0;
-      font-size: 14px;
-      opacity: 0.85;
-      font-style: italic;
-    }
-
-    .form-content {
-      padding: 20px 50px;
-      text-align: center;
+    input[type="file"], input[type="submit"] {
+      width: 100%;
+      padding: 14px;
+      border-radius: 10px;
+      margin-top: 15px;
+      font-size: 15px;
     }
 
     input[type="file"] {
-      margin: 15px 0 20px;
-      padding: 14px;
       border: 2px dashed #b22222;
-      border-radius: 12px;
-      cursor: pointer;
-      font-size: 15px;
-      color: #0c0b0b;
-      transition: border-color 0.3s ease;
-      width: 100%;
-      box-sizing: border-box;
+      background: #fff;
     }
 
-    input[type="file"]:focus {
-      border-color: #5c1a00;
-      outline: none;
-      box-shadow: 0 0 5px #5c1a00;
+    input[type="radio"] {
+        margin-right: 10px;
+        accent-color: #b22222;
+        cursor: pointer;
+        width: 18px;
+        height: 18px;
+        vertical-align: middle;
     }
+
+    /* ===== Progress Bar ===== */
+.progress-container {
+  width: 100%;
+  max-width: 500px;
+  height: 25px;
+  background-color: #eee;
+  border-radius: 12px;
+  margin: 30px auto 10px;
+  overflow: hidden;
+  box-shadow: inset 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.progress-bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(135deg, #b22222, #5c1a00); 
+  border-radius: 12px 0 0 12px;
+  transition: width 0.3s ease;
+}
+
 
     input[type="submit"] {
-      background-color: #5c1a00;
-      color: white;
+      background: #5c1a00;
       border: none;
-      padding: 14px 0;
+      color: white;
       font-size: 18px;
-      font-weight: 600;
-      border-radius: 8px;
       cursor: pointer;
-      width: 100%;
-      letter-spacing: 0.8px;
-      transition: background-color 0.3s ease, box-shadow 0.3s ease;
+      margin-bottom: 20px;
     }
 
-    input[type="submit"]:hover {
-      background-color: #7a2e2e;
-      box-shadow: 0 4px 15px rgba(122, 67, 62, 0.5);
-    }
-
-    .footer {
-      margin-top: 10px;
-      font-size: 13px;
-      color: #b22222;
-      font-style: italic;
-    }
-
-    .radio-group {
-      text-align: left;
-      margin-top: 10px;
-      font-size: 15px;
-      color: #b22222;
-    }
-
-    .radio-group p {
-      font-weight: 600;
-      margin-bottom: 6px;
-    }
-
-    .radio-group label {
-      display: block;
-      margin-bottom: 6px;
-      cursor: pointer;
-    }
-
-    .radio-group input[type="radio"] {
-      margin-right: 10px;
-      accent-color: #5c1a00;
-      cursor: pointer;
-      transform: scale(1.1);
-    }
-
-    .example-section {
+    .output-section {
       background: #fff5ee;
-      border: 1px solid #f5c6aa;
-      border-radius: 10px;
+      border: 1px solid #e0b79c;
       padding: 15px;
       margin-top: 25px;
-      text-align: left;
+      border-radius: 12px;
     }
 
-    .example-section h3 {
-      color: #5c1a00;
-      margin-bottom: 10px;
-      font-size: 18px;
-    }
-
-    .example-section p {
-      font-size: 14px;
-      color: #4b2e2e;
-      margin-bottom: 10px;
-    }
-
-    .example-section img {
-      width: 100%;
-      border-radius: 8px;
-      border: 1px solid #e0b79c;
-    }
-
-    .back-dashboard {
-      margin-top: 8px;
-      font-size: 14px;
-      color: #5c1a00;
-      font-weight: 600;
-    }
-
-    .back-dashboard a {
+    .download-btn {
+      display: inline-block;
+      padding: 12px;
+      margin-top: 10px;
+      background: #5c1a00;
+      color: white;
       text-decoration: none;
-      color: #7a2e2e;
-      transition: color 0.3s ease;
+      border-radius: 8px;
     }
 
-    .back-dashboard a:hover {
-      color: #b22222;
+    .preview-image {
+      max-width: 100%;
+      margin-top: 10px;
+      border-radius: 8px;
+      border: 1px solid #d9a679;
+    }
+
+    .summary-box {
+      background: #fff;
+      padding: 12px;
+      margin-top: 10px;
+      border-left: 4px solid #b22222;
+    }
+
+    .preview-box {
+      display: none;
+      padding: 10px;
+      background: #fff0e6;
+      border-radius: 8px;
+      margin-top: 10px;
+      border: 1px solid #e0b79c;
     }
   </style>
 </head>
 <body>
-  <div class="upload-box">
+<div class="upload-box">
 
-    <div class="header">
-      <h1>Upload Excel File</h1>
-      <p>Generate your project’s Gantt chart quickly and easily</p>
-    </div>
-
-    <div class="form-content">
-      <form method="POST" enctype="multipart/form-data">
-        <input type="file" name="file" accept=".xlsx,.xls" required>
-
-        <div class="radio-group">
-          <p><strong>Include Saturdays in project plan?</strong></p>
-          <label><input type="radio" name="include_saturday" value="yes" checked> Yes</label>
-          <label><input type="radio" name="include_saturday" value="no"> No</label>
-        </div>
-
-        <div class="radio-group">
-          <p><strong>Include Sundays in project plan?</strong></p>
-          <label><input type="radio" name="include_sunday" value="yes" checked> Yes</label>
-          <label><input type="radio" name="include_sunday" value="no"> No</label>
-        </div>
-
-        <input type="submit" value="Generate Gantt Chart">
-      </form>
-
-      <div class="example-section">
-        <h3>📘 Excel Sheet Format Example</h3>
-        <p>Please make sure your Excel sheet includes these 3 columns exactly as shown below:</p>
-        <ul>
-          <li><strong>Task</strong> – Name of the activity (e.g., “Task Name”)</li>
-          <li><strong>Start Date</strong> – When the task starts (e.g., “2025-11-01”)</li>
-          <li><strong>End Date</strong> – When the task ends (e.g., “2025-11-05”)</li>
-        </ul>
-        <p>Here’s an example of a properly formatted Excel file:</p>
-        <img src="{{ url_for('static', filename='images/example_excel.png') }}" alt="Example Excel Sheet Format">
-      </div>
-
-      <div class="footer">
-        <p>Supported format: .xlsx or .xls</p>
-      </div>
-
-      <p class="back-dashboard"><a href="{{ url_for('home') }}">← Back to Dashboard</a></p>
-    </div>
+  <div class="header">
+    <h1>Upload Excel File</h1>
+    <p>Generate your Gantt chart with AI project summary</p>
   </div>
+
+  {% if error %}
+  <div style="background:#ffdddd; padding:12px; border-left:4px solid red; margin:15px;">
+    {{ error }}
+  </div>
+  {% endif %}
+
+  <div class="form-content">
+    <form method="POST" enctype="multipart/form-data">
+
+      <input id="fileUpload" type="file" name="file" accept=".xlsx,.xls" required>
+
+      <!-- PREVIEW FOR IMAGE FILE ONLY -->
+      <div id="previewContainer" class="preview-box">
+        <p><strong>Image Preview:</strong></p>
+        <a id="previewLink" href="#" target="_blank">Open full image</a><br><br>
+        <img id="previewImage" src="" style="max-width:100%">
+      </div>
+
+      <div class="radio-group">
+        <p><strong>Include Saturdays?</strong></p>
+        <label><input type="radio" name="include_saturday" value="yes" checked> Yes</label>
+        <label><input type="radio" name="include_saturday" value="no"> No</label>
+      </div>
+
+      <div class="radio-group">
+        <p><strong>Include Sundays?</strong></p>
+        <label><input type="radio" name="include_sunday" value="yes" checked> Yes</label>
+        <label><input type="radio" name="include_sunday" value="no"> No</label>
+      </div>
+
+      <input type="submit" value="Generate Gantt Chart">
+    </form>
+     
+    <div id="progressWrapper" style="display:none;">
+      <div class="progress-container">
+        <div class="progress-bar" id="progressBar"></div>
+      </div>
+      <div class="timer-text" id="timerText">Elapsed time: 0s</div>
+    </div>
+
+    <!-- ================= OUTPUT SECTION ================= -->
+    {% if gantt_image %}
+    <div class="output-section">
+
+      <h3>📊 Gantt Chart Generated</h3>
+
+      <!-- DOWNLOAD EXCEL -->
+      <a class="download-btn" href="{{ url_for('static', filename=download_excel) }}" download>
+        ⬇ Download Excel Output
+      </a>
+
+      <!-- VIEW FULL IMAGE -->
+      <p style="margin-top:15px;">
+        <a href="{{ url_for('static', filename=gantt_image) }}" target="_blank">🔍 Open Gantt Chart Full Image</a>
+      </p>
+
+      <!-- IMAGE PREVIEW -->
+      <img class="preview-image"
+           src="{{ url_for('static', filename=gantt_image) }}"
+           alt="Gantt Chart Preview">
+
+      <!-- PROJECT INFO -->
+      <p><strong>Project Start:</strong> {{ project_start }}</p>
+      <p><strong>Project End:</strong> {{ project_end }}</p>
+
+      {% if open_tasks %}
+      <p><strong>Open-ended Tasks:</strong> {{ open_tasks }}</p>
+      {% endif %}
+
+      {% if ai_summary %}
+      <div class="summary-box">
+        <h4>🤖 AI Summary</h4>
+        <p>{{ ai_summary }}</p>
+      </div>
+      {% endif %}
+
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+
+
+<script>
+document.getElementById('fileUpload').addEventListener('change', function () {
+  const file = this.files[0];
+  if (!file) return;
+
+  const previewBox = document.getElementById('previewContainer');
+  const previewImg = document.getElementById('previewImage');
+  const previewLink = document.getElementById('previewLink');
+
+  const imageTypes = ["image/png", "image/jpeg", "image/webp", "image/gif"];
+
+  if (imageTypes.includes(file.type)) {
+    const url = URL.createObjectURL(file);
+    previewImg.src = url;
+    previewLink.href = url;
+    previewBox.style.display = "block";
+  } else {
+    previewBox.style.display = "none";
+  }
+});
+
+ document.addEventListener("DOMContentLoaded", function () {
+    const form = document.getElementById("uploadForm");
+    const statusText = document.getElementById("status");
+    const progressWrapper = document.getElementById("progressWrapper");
+    const progressBar = document.getElementById("progressBar");
+    const timerText = document.getElementById("timerText");
+
+    let timerInterval;
+    let currentPercent = 0;
+
+    form.addEventListener("submit", function (e) {
+      // Show progress bar and hide status
+      statusText.style.display = "none";
+      progressWrapper.style.display = "block";
+      progressBar.style.width = "0%";
+      currentPercent = 0;
+      timerText.textContent = `Conversion progress: 0%`;
+
+      // Increment progress bar percentage every second until 95%
+      timerInterval = setInterval(() => {
+        if (currentPercent < 95) {
+          currentPercent++;
+          progressBar.style.width = currentPercent + "%";
+          timerText.textContent = `Conversion progress: ${currentPercent}%`;
+        }
+      }, 1000);
+    });
+  });
+
+
+if (performance.navigation.type === performance.navigation.TYPE_RELOAD) {
+    window.location.href = "/gantt-chart";
+}
+
+</script>
+
 </body>
 </html>

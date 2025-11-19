@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Edit Flowchart</title>
+    <style>
+        body { font-family: Segoe UI; padding: 20px; background: #fff8dc; }
+        .panel { background: white; padding: 20px; border-radius:12px; border:1px solid #d9c6a0; }
+        .node-row { margin-bottom:12px; padding:10px; border-radius:8px; background:#fff3da; }
+        input, select { padding: 8px; width: 100%; margin-top:5px; }
+        button { padding: 10px 20px; background:#c0392b; color:white; border:none; border-radius:8px; margin-top:10px; cursor:pointer; }
+        button:hover { background:#a83224; }
+    </style>
+</head>
+<body>
+
+<h2>Edit Flowchart</h2>
+
+<form action="/apply-edit/{{ session_id }}" method="post">
+
+    <div class="panel">
+        <h3>Modify Existing Nodes</h3>
+        {% for node_id, node in flowchart.nodes.items() %}
+        <div class="node-row">
+            <strong>{{ node_id }}</strong><br>
+            Label:
+            <input name="label_{{ node_id }}" value="{{ node.label }}">
+            Type:
+            <select name="type_{{ node_id }}">
+                {% for t in ["start","end","process","decision","input","output","subroutine"] %}
+                <option value="{{ t }}" {% if node.type == t %}selected{% endif %}>{{ t }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="panel">
+        <h3>Add New Node</h3>
+        ID: <input name="new_node_id">
+        Label: <input name="new_node_label">
+        Type:
+        <select name="new_node_type">
+            <option value="">--</option>
+            <option>start</option><option>end</option><option>process</option>
+            <option>decision</option><option>input</option><option>output</option>
+        </select>
+    </div>
+
+    <div class="panel">
+        <h3>Delete Node</h3>
+        Node ID to delete:
+        <input name="delete_node_id">
+    </div>
+
+    <div class="panel">
+    <h3>Edit Existing Edges</h3>
+
+    {% for edge in flowchart.edges %}
+    <div class="node-row">
+        <strong>{{ edge.from }} → {{ edge.to }}</strong><br>
+
+        Label (optional):
+        <input name="edge_label_{{ loop.index0 }}" value="{{ edge.label if 'label' in edge else '' }}">
+
+        From:
+        <input name="edge_from_{{ loop.index0 }}" value="{{ edge.from }}">
+
+        To:
+        <input name="edge_to_{{ loop.index0 }}" value="{{ edge.to }}">
+    </div>
+    {% endfor %}
+
+    <input type="hidden" name="edge_count" value="{{ flowchart.edges | length }}">
+    </div>
+
+    <div class="panel">
+    <h3>Add New Edge</h3>
+
+    From:
+    <input name="new_edge_from">
+
+    To:
+    <input name="new_edge_to">
+
+    Label (optional):
+    <input name="new_edge_label">
+    </div>
+
+    <div class="panel">
+    <h3>Delete Edge</h3>
+    Enter exact edge (FROM → TO):  
+    <input name="delete_edge">
+    <small>Example: <b>A → B</b></small>
+    </div>
+
+    <button type="submit">Apply Changes</button>
+</form>
+
+<script>
+if (performance.navigation.type === performance.navigation.TYPE_RELOAD) {
+    window.location.href = "/flow-chart";
+}
+</script>
+
+</body>
+</html>

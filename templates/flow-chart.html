@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Flowchart Generator</title>
+
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -11,33 +12,66 @@
             padding: 0;
         }
 
-        .main-wrapper {
-            max-width: 900px;
-            margin: 40px auto;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+        /* MAIN LAYOUT → Two Columns */
+        .layout {
+            display: flex;
+            height: 100vh;
+            padding: 20px;
+            gap: 20px;
+        }
+
+        /* LEFT SIDEBAR */
+        .sidebar {
+            width: 350px;
+            background: #fff3da;
             border-radius: 12px;
-            overflow: hidden;
+            padding: 20px;
+            border-right: 2px solid #c0392b;
+            overflow-y: auto;
+        }
+
+        .sidebar h3 {
+            margin-top: 0;
+            font-size: 1.5rem;
+            color: #5a2e0d;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+
+        .history-box {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            height: calc(100% - 60px);
+            border: 1px solid #e3c9a6;
+        }
+
+        .loading-text {
+            font-size: 1.2rem;
+            color: #5a2e0d;
+        }
+
+        /* RIGHT MAIN PANEL */
+        .main-wrapper {
+            flex: 1;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+            padding-bottom: 40px;
         }
 
         .header {
-            background-color: #c0392b; /* Red */
-            padding: 40px 0; /* Increased height */
+            background-color: #c0392b;
+            padding: 25px 0;
             text-align: center;
             color: white;
-            font-size: 2.5rem;
+            font-size: 2rem;
             font-weight: bold;
-            letter-spacing: 1px;
+            border-radius: 12px 12px 0 0;
         }
 
         .container {
-            background-color: #ffffff;
             padding: 30px;
-            border-radius: 0 0 12px 12px; /* Rounded only at bottom */
-        }
-
-        h2 {
-            color: #5a2e0d; /* Bold Brown */
-            margin-top: 0;
         }
 
         label {
@@ -48,112 +82,143 @@
 
         textarea {
             width: 100%;
-            height: 140px;
-            padding: 12px;
+            height: 160px;
+            padding: 15px;
             margin-top: 10px;
             font-size: 1rem;
-            border: 2px solid #c0392b; /* Red outline */
-            border-radius: 6px;
-            resize: vertical;
+            border: 2px solid #c0392b;
+            border-radius: 8px;
             outline: none;
         }
 
         textarea:focus {
             border-color: #a83224;
-            box-shadow: 0 0 5px rgba(192, 57, 43, 0.5);
+            box-shadow: 0 0 5px rgba(192,57,43,0.4);
         }
 
-        .submit-btn {
+        .submit-btn, .clear-btn {
             margin-top: 20px;
             padding: 12px 24px;
             font-size: 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            border: 2px solid #c0392b;
             background-color: #c0392b;
             color: #fff;
-            border: 2px solid #c0392b; /* Red outline */
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.3s ease;
+            transition: 0.3s;
         }
 
-        .submit-btn:hover {
+        .submit-btn:hover,
+        .clear-btn:hover {
             background-color: #a83224;
-            border-color: #a83224;
         }
 
-        #progressContainer {
-            display: none;
-            margin-top: 30px;
-        }
+        /* ===== Progress Bar ===== */
+.progress-container {
+  width: 100%;
+  max-width: 500px;
+  height: 25px;
+  background-color: #eee;
+  border-radius: 12px;
+  margin: 30px auto 10px;
+  overflow: hidden;
+  box-shadow: inset 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.progress-bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(135deg, #b22222, #5c1a00); 
+  border-radius: 12px 0 0 12px;
+  transition: width 0.3s ease;
+}
 
         .preview {
-            text-align: center;
             margin-top: 40px;
+            text-align: center;
         }
 
         .preview img {
-            max-width: 100%;
-            margin-top: 20px;
+            width: 80%;
             border-radius: 10px;
         }
 
         .download-links {
-            text-align: center;
             margin-top: 20px;
+            text-align: center;
         }
 
         .download-links button {
+            padding: 12px 24px;
+            border-radius: 8px;
             background-color: #c0392b;
-            color: #fff;
+            color: white;
             border: none;
-            padding: 12px 28px;
-            font-size: 1rem;
-            border-radius: 6px;
             cursor: pointer;
-            transition: background-color 0.3s ease;
         }
 
         .download-links button:hover {
             background-color: #a83224;
         }
-
-        @media (max-width: 768px) {
-            .main-wrapper {
-                margin: 20px;
-            }
-
-            .container {
-                padding: 20px;
-            }
-
-            .download-links button {
-                width: 100%;
-            }
-        }
     </style>
 </head>
 <body>
 
-    <div class="main-wrapper">
-        <div class="header">
-            Flowchart Generator
+<div class="layout">
+
+    <!-- LEFT SIDEBAR -->
+    <div class="sidebar">
+        <h3>Flowchart History</h3>
+
+        <div class="history-box">
+            {% if history %}
+                <ul style="padding-left: 0; list-style: none;">
+                    {% for item in history %}
+                      <li style="margin-bottom: 18px;">
+
+                       <!-- View Session -->
+                       <a href="/session/{{ item.id }}" 
+                       style="text-decoration: none; color: #5a2e0d; font-weight: bold;">
+                         {{ item.prompt[:40] }}...
+                       <br>
+                       <small style="color:#a05f26;">{{ item.timestamp }}</small>
+                       </a>
+
+                       <!-- Edit Button -->
+                       <br>
+                       <a href="/edit/{{ item.id }}" 
+                       style="color:#c0392b; font-size: 0.9rem; font-weight:bold;">✏ Edit</a>
+
+                       </li>
+                    {% endfor %}
+
+                </ul>
+            {% else %}
+                <p class="loading-text">Loading...</p>
+            {% endif %}
         </div>
+    </div>
+
+    <!-- RIGHT MAIN PANEL -->
+    <div class="main-wrapper">
+        <div class="header">Flowchart Generator</div>
 
         <div class="container">
+
             <form action="/generate" method="post" id="flowchartForm">
-                <label for="process_text">Enter your process description:</label>
-                <textarea name="process_text" id="process_text" required></textarea>
+                <label>Enter your process description</label>
+                <textarea name="process_text" id="process_text" required>{{ request.form.get('process_text', '') }}</textarea>
+
                 <button type="submit" class="submit-btn">Generate Flowchart</button>
+                <button type="button" class="clear-btn" onclick="document.getElementById('process_text').value=''">Clear</button>
             </form>
 
-            <!-- Progress Bar -->
-            <div id="progressContainer">
-                <label style="font-weight: bold; color: #5a2e0d;">Generating Flowchart...</label>
-                <div style="background-color: #f0f0f0; border-radius: 6px; overflow: hidden; height: 25px; margin-top: 10px;">
-                    <div id="progressBar" style="height: 100%; width: 0%; background-color: #c0392b; color: white; text-align: center; line-height: 25px; font-weight: bold;">
-                        0%
-                    </div>
-                </div>
-            </div>
+            <div id="progressWrapper" style="display:none;">
+             <div class="progress-container">
+             <div class="progress-bar" id="progressBar"></div>
+             </div>
+             <div class="timer-text" id="timerText">Elapsed time: 0s</div>
+             </div>
 
             {% if image_url %}
             <div class="preview">
@@ -163,39 +228,51 @@
 
             <div class="download-links">
                 <a href="{{ image_url }}" download>
-                    <button type="button">Download Flowchart Image</button>
+                    <button>Download Flowchart</button>
                 </a>
             </div>
             {% endif %}
 
-            <p class="back-dashboard"><a href="{{ url_for('home') }}">← Back to Dashboard</a></p>
         </div>
     </div>
+</div>
 
-    <script>
-        const form = document.getElementById("flowchartForm");
-        const progressContainer = document.getElementById("progressContainer");
-        const progressBar = document.getElementById("progressBar");
+<script>
 
-        form.addEventListener("submit", function () {
-            // Show progress bar
-            progressContainer.style.display = "block";
+    document.addEventListener("DOMContentLoaded", function () {
+    const form = document.getElementById("uploadForm");
+    const statusText = document.getElementById("status");
+    const progressWrapper = document.getElementById("progressWrapper");
+    const progressBar = document.getElementById("progressBar");
+    const timerText = document.getElementById("timerText");
 
-            // Simulate progress
-            let progress = 0;
-            const interval = setInterval(() => {
-                if (progress < 95) {
-                    progress += Math.floor(Math.random() * 5) + 1;
-                    progress = Math.min(progress, 95);
-                    progressBar.style.width = progress + "%";
-                    progressBar.innerText = progress + "%";
-                }
-            }, 300);
+    let timerInterval;
+    let currentPercent = 0;
 
-            // Clear on page reload
-            window.onpageshow = () => clearInterval(interval);
-        });
-    </script>
+    form.addEventListener("submit", function (e) {
+      // Show progress bar and hide status
+      statusText.style.display = "none";
+      progressWrapper.style.display = "block";
+      progressBar.style.width = "0%";
+      currentPercent = 0;
+      timerText.textContent = `Conversion progress: 0%`;
+
+      // Increment progress bar percentage every second until 95%
+      timerInterval = setInterval(() => {
+        if (currentPercent < 95) {
+          currentPercent++;
+          progressBar.style.width = currentPercent + "%";
+          timerText.textContent = `Conversion progress: ${currentPercent}%`;
+        }
+      }, 1000);
+    });
+    });
+
+
+   if (performance.navigation.type === performance.navigation.TYPE_RELOAD) {
+      window.location.href = "/flow-chart";
+    }
+</script>
 
 </body>
 </html>
