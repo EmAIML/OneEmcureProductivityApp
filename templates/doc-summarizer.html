@@ -3,37 +3,34 @@
 <head>
 <title>Document Processor</title>
 <style>
-    /* ===== Base & Body ===== */
     body {
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        background-color: #fff9e6; /* light yellow */
+        background-color: #fff9e6;
         margin: 0;
         padding: 0;
-        color: #4b2e1e; /* dark brown text */
+        color: #4b2e1e;
     }
 
-    /* ===== Container ===== */
     .container {
         width: 60%;
         max-width: 720px;
         margin: 60px auto;
-        background: #fff; /* white */
+        background: #fff;
         padding: 50px 45px;
         border-radius: 14px;
-        box-shadow: 0 8px 30px rgba(139, 69, 19, 0.25); /* subtle brown shadow */
-        border: 2px solid #8b4513; /* saddle brown border */
+        box-shadow: 0 8px 30px rgba(139, 69, 19, 0.25);
+        border: 2px solid #8b4513;
     }
 
     h2 {
         text-align: center;
-        color: #8b4513; /* saddle brown */
+        color: #8b4513;
         font-weight: 700;
         font-size: 2.5rem;
         margin-bottom: 30px;
         letter-spacing: 1.2px;
     }
 
-    /* ===== Form ===== */
     form {
         display: flex;
         flex-direction: column;
@@ -42,7 +39,7 @@
 
     label {
         font-weight: 600;
-        color: #7a3e1a; /* medium brown */
+        color: #7a3e1a;
         margin-bottom: 6px;
         font-size: 1.1rem;
         display: block;
@@ -54,7 +51,7 @@
         padding: 12px 15px;
         font-size: 1rem;
         border-radius: 8px;
-        border: 2px solid #b35b17; /* reddish brown */
+        border: 2px solid #b35b17;
         transition: border-color 0.3s ease;
         outline-offset: 2px;
     }
@@ -62,7 +59,7 @@
     input[type="file"]:focus,
     input[type="number"]:focus,
     input[type="text"]:focus {
-        border-color: #7a3e1a; /* darker brown on focus */
+        border-color: #7a3e1a;
         outline: none;
         box-shadow: 0 0 8px #b35b17aa;
     }
@@ -76,7 +73,6 @@
         vertical-align: middle;
     }
 
-    /* Radio container */
     .radio-group {
         color: #7a3e1a;
         font-weight: 600;
@@ -104,10 +100,29 @@
         transform: translateY(-3px);
     }
 
-    /* ===== Result Section ===== */
+    /* ===== Progress Bar ===== */
+.progress-container {
+  width: 100%;
+  max-width: 500px;
+  height: 25px;
+  background-color: #eee;
+  border-radius: 12px;
+  margin: 30px auto 10px;
+  overflow: hidden;
+  box-shadow: inset 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.progress-bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(135deg, #b22222, #5c1a00); 
+  border-radius: 12px 0 0 12px;
+  transition: width 0.3s ease;
+}
+
     .result {
         margin-top: 40px;
-        background: #fdf6f0; /* very light cream */
+        background: #fdf6f0;
         border-left: 6px solid #b35b17;
         padding: 25px 30px;
         border-radius: 10px;
@@ -149,11 +164,10 @@
         text-decoration: none;
         border-radius: 50px;
         font-weight: 600;
-        box-shadow: 0 6px 16px rgba(139, 69, 19, 0.3); 
+        box-shadow: 0 6px 16px rgba(139, 69, 19, 0.3);
         transition: background 0.3s ease, transform 0.2s ease;
     }
 
-    /* ===== Responsive ===== */
     @media (max-width: 768px) {
         .container {
             width: 90%;
@@ -173,20 +187,21 @@
 <body>
 <div class="container">
     <h2>Document Processor</h2>
+    {% if error %}
+    <script>
+       alert("{{ error }}");  
+    </script>
+    {% endif %}
     <form method="POST" action="/process" enctype="multipart/form-data">
 
         <label for="document">Upload Document: Document should be either word file or Pdf file</label>
-        <input type="file" name="document" required>
+        <input type="file" name="document" accept=".pdf,.doc,.docx,.dot,.dotx,.docm,.dotm,.xml,.xps" required>
+
 
         <label>Select Operation:</label>
         <div class="radio-group">
             <label><input type="radio" name="operation" value="summary" checked> Summary</label>
             <label><input type="radio" name="operation" value="questions"> Generate Questions</label>
-        </div>
-
-        <div id="word-limit-field">
-            <label for="word_limit">Summary Word Limit (only for summary):</label>
-            <input type="number" name="word_limit" value="100" min="10">
         </div>
 
         <div id="skip-pages-field" style="display:none;">
@@ -197,6 +212,13 @@
         <button type="submit">Submit</button>
     </form>
 
+    <div id="progressWrapper" style="display:none;">
+      <div class="progress-container">
+        <div class="progress-bar" id="progressBar"></div>
+      </div>
+      <div class="timer-text" id="timerText">Elapsed time: 0s</div>
+    </div>
+
     {% if result %}
     <div class="result">
         <h3>Result:</h3>
@@ -204,7 +226,6 @@
 
         {% if download_file %}
         <a href="{{ url_for('download_file', filename=download_file) }}" class="download-button">Download Result</a>
-
         {% endif %}
     </div>
     {% endif %}
@@ -216,21 +237,72 @@
     const summaryRadio = document.querySelector('input[value="summary"]');
     const questionsRadio = document.querySelector('input[value="questions"]');
     const skipPagesField = document.getElementById('skip-pages-field');
-    const wordLimitField = document.getElementById('word-limit-field');
 
     function toggleFields() {
         if (questionsRadio.checked) {
             skipPagesField.style.display = 'block';
-            wordLimitField.style.display = 'none';
         } else {
             skipPagesField.style.display = 'none';
-            wordLimitField.style.display = 'block';
         }
     }
 
     summaryRadio.addEventListener('change', toggleFields);
     questionsRadio.addEventListener('change', toggleFields);
-    toggleFields(); // Initialize on load
+    toggleFields();
+
+    function generateOutput() {
+
+    const formData = new FormData(document.getElementById("uploadForm"));
+
+    fetch("/process", {
+        method: "POST",
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+
+        if (data.error) {
+            alert(data.error);   // POPUP MESSAGE
+            return;
+        }
+
+        document.getElementById("output").innerText = data.result;
+    })
+    .catch(err => alert("Something went wrong!"));
+    }
+
+     document.addEventListener("DOMContentLoaded", function () {
+    const form = document.getElementById("uploadForm");
+    const statusText = document.getElementById("status");
+    const progressWrapper = document.getElementById("progressWrapper");
+    const progressBar = document.getElementById("progressBar");
+    const timerText = document.getElementById("timerText");
+
+    let timerInterval;
+    let currentPercent = 0;
+
+    form.addEventListener("submit", function (e) {
+      // Show progress bar and hide status
+      statusText.style.display = "none";
+      progressWrapper.style.display = "block";
+      progressBar.style.width = "0%";
+      currentPercent = 0;
+      timerText.textContent = `Conversion progress: 0%`;
+
+      // Increment progress bar percentage every second until 95%
+      timerInterval = setInterval(() => {
+        if (currentPercent < 95) {
+          currentPercent++;
+          progressBar.style.width = currentPercent + "%";
+          timerText.textContent = `Conversion progress: ${currentPercent}%`;
+        }
+      }, 1000);
+    });
+  });
+
+    if (performance.navigation.type === performance.navigation.TYPE_RELOAD) {
+       window.location.href = "/doc-summarizer";
+    }
 </script>
 </body>
 </html>
